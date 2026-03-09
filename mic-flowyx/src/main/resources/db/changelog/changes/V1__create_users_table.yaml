@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: V1__create_users_table
+      author: skypea
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true

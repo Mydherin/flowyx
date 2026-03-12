@@ -1,6 +1,7 @@
 package dev.skypea.mic_flowyx.infrastructure.controllers;
 
 import dev.skypea.mic_flowyx.application.use_cases.CreateUserUseCase;
+import dev.skypea.mic_flowyx.domain.entities.Role;
 import dev.skypea.mic_flowyx.domain.entities.User;
 import dev.skypea.mic_flowyx.domain.exceptions.UserAlreadyExistsException;
 import lombok.AllArgsConstructor;
@@ -9,14 +10,15 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class CreateUserController {
 
     private final CreateUserUseCase createUserUseCase;
@@ -25,15 +27,16 @@ public class CreateUserController {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Request {
-        private UUID id;
+        private String id;
         private String name;
         private String email;
+        private Role role;
     }
 
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody Request request) {
         User user = createUserUseCase.run(
-                new CreateUserUseCase.Command(request.getId(), request.getName(), request.getEmail())
+                new CreateUserUseCase.Command(request.getId(), request.getName(), request.getEmail(), request.getRole())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -26,12 +25,12 @@ public class UserPostgresRepository implements UserRepository {
     }
 
     @Override
-    public boolean existsById(UUID id) {
+    public boolean existsById(String id) {
         return userJpaConnector.existsById(id);
     }
 
     @Override
-    public Optional<User> findById(UUID id) {
+    public Optional<User> findById(String id) {
         return userJpaConnector.findById(id).map(this::toDomain);
     }
 
@@ -46,6 +45,7 @@ public class UserPostgresRepository implements UserRepository {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .role(user.getRole())
                 .build();
         return toDomain(userJpaConnector.save(entity));
     }
@@ -55,6 +55,7 @@ public class UserPostgresRepository implements UserRepository {
                 .id(entity.getId())
                 .name(entity.getName())
                 .email(entity.getEmail())
+                .role(entity.getRole())
                 .build();
     }
 }

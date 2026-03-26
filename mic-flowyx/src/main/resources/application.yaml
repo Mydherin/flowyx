@@ -1,48 +1,36 @@
 spring:
   application:
-    name: spring-boot-java-25-scaffolding
-
+    name: mic-flowyx
   config:
     import: optional:file:.env[.properties]
-
   datasource:
-    url: jdbc:postgresql://localhost:5432/spring_boot_java_25
-    username: postgres
-    password: postgres
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 60000
   jpa:
     hibernate:
       ddl-auto: none
     show-sql: false
     properties:
       hibernate:
-        format_sql: false
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
+        format_sql: true
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-    enabled: true
+    enabled: false
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://accounts.google.com
-          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+google:
+  oauth2:
+    client-id: ${GOOGLE_CLIENT_ID}
 
-app:
-  jwt:
-    secret: ${JWT_SECRET:bXktc3VwZXItc2VjcmV0LWtleS1mb3ItZmxvd3l4LWRldi1vbmx5LTI1NmJpdHM=}
-    expiration-ms: 900000
-  refresh-token:
-    expiration-days: 30
-  google:
-    client-id: 782368385632-mu9tpj6pi8mhrk0c55i9ekmouv8udbse.apps.googleusercontent.com
-    client-secret: ${GOOGLE_CLIENT_SECRET}
-    redirect-uri: http://localhost:8080/api/v1/auth/callback/google
-    token-endpoint: https://oauth2.googleapis.com/token
-    userinfo-endpoint: https://www.googleapis.com/oauth2/v2/userinfo
-    auth-endpoint: https://accounts.google.com/o/oauth2/v2/auth
-  cors:
-    allowed-origins: http://localhost:5173
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+server:
+  port: 8080

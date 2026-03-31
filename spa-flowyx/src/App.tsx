@@ -5,22 +5,28 @@ import { useAuthStore } from './features/auth/store'
 import { callBackend } from './features/auth/hooks/useAuth'
 
 export default function App() {
+  // Zustand v5 hydrates localStorage asynchronously. We must wait for it
+  // before rendering the router, otherwise ProtectedRoute sees user=null
+  // and redirects to /login before the stored session is available.
+  const [hasHydrated, setHasHydrated] = useState(
+    () => useAuthStore.persist.hasHydrated(),
+  )
   const user = useAuthStore((state) => state.user)
   const setUser = useAuthStore((state) => state.setUser)
   const logout = useAuthStore((state) => state.logout)
-  const [isValidating, setIsValidating] = useState(!!user)
+  const [isValidating, setIsValidating] = useState(false)
 
   useEffect(() => {
-    if (!user) {
-      setIsValidating(false)
-      return
-    }
+    if (hasHydrated) return
+    return useAuthStore.persist.onFinishHydration(() => setHasHydrated(true))
+  }, [hasHydrated])
 
-    // Silently revalidate the stored access token on every app load.
-    // If the token is expired or invalid the backend returns 401 →
-    // callBackend calls logout() automatically → router redirects to /login.
+  useEffect(() => {
+    if (!hasHydrated || !user) return
+
+    setIsValidating(true)
     callBackend<{ nickname: string; email: string; pictureUrl: string }>(
-      '/auth/signin',
+      '/api/v1/auth/signin',
       user.accessToken,
       { picture: user.picture },
     )
@@ -35,9 +41,9 @@ export default function App() {
       .catch(() => logout())
       .finally(() => setIsValidating(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hasHydrated])
 
-  if (isValidating) {
+  if (!hasHydrated || isValidating) {
     return (
       <div className="min-h-dvh bg-bg-primary flex items-center justify-center">
         <span className="text-text-secondary text-sm">Loading…</span>

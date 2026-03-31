@@ -22,7 +22,7 @@ public class SecurityConfig {
     private final GoogleTokenFilter googleTokenFilter;
 
     @Value("${cors.allowed-origins:http://localhost:5173}")
-    private String allowedOrigin;
+    private String allowedOrigins;
 
     public SecurityConfig(GoogleTokenFilter googleTokenFilter) {
         this.googleTokenFilter = googleTokenFilter;
@@ -45,7 +45,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(allowedOrigin));
+        config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(false);

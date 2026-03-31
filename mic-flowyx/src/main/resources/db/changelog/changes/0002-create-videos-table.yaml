@@ -1,0 +1,92 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0002-create-videos-table
+      author: flowyx
+      changes:
+        - createTable:
+            tableName: videos
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_videos_user_id
+                    references: users(id)
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: video_key
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: thumbnail_key
+                  type: TEXT
+              - column:
+                  name: file_size_bytes
+                  type: BIGINT
+              - column:
+                  name: content_type
+                  type: VARCHAR(100)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+                  defaultValue: READY
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: NOW()
+              - column:
+                  name: updated_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: NOW()
+        - createIndex:
+            indexName: idx_videos_user_id
+            tableName: videos
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 0003-create-video-tags-table
+      author: flowyx
+      changes:
+        - createTable:
+            tableName: video_tags
+            columns:
+              - column:
+                  name: video_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_video_tags_video_id
+                    references: videos(id)
+                    deleteCascade: true
+              - column:
+                  name: tag
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: video_tags
+            columnNames: video_id, tag
+            constraintName: pk_video_tags

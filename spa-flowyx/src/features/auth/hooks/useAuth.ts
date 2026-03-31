@@ -76,7 +76,7 @@ export function useAuth() {
         let backendUser: BackendUser
         try {
           backendUser = await callBackend<BackendUser>(
-            '/auth/signin',
+            '/api/v1/auth/signin',
             tokenResponse.access_token,
             { picture: info.picture },
           )
@@ -84,7 +84,7 @@ export function useAuth() {
           if (!(signInErr instanceof Error) || signInErr.message !== 'USER_NOT_FOUND') throw signInErr
           // User doesn't exist yet — create account automatically
           backendUser = await callBackend<BackendUser>(
-            '/auth/signup',
+            '/api/v1/auth/signup',
             tokenResponse.access_token,
             {
               uuid: crypto.randomUUID(),

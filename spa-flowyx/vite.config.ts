@@ -9,4 +9,15 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] }),
   ],
+  server: {
+    allowedHosts: true,
+    proxy: {
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/media': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/media/, '/flowyx-videos'),
+      },
+    },
+  },
 })

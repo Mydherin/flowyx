@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0003-drop-title-column
+      author: flowyx
+      changes:
+        - dropColumn:
+            tableName: videos
+            columnName: title

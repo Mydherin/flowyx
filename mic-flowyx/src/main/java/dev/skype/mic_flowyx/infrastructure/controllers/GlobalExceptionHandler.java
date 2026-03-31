@@ -2,6 +2,9 @@ package dev.skype.mic_flowyx.infrastructure.controllers;
 
 import dev.skype.mic_flowyx.domain.exceptions.UserAlreadyExistsException;
 import dev.skype.mic_flowyx.domain.exceptions.UserNotFoundException;
+import dev.skype.mic_flowyx.domain.exceptions.VideoAccessDeniedException;
+import dev.skype.mic_flowyx.domain.exceptions.VideoNotFoundException;
+import dev.skype.mic_flowyx.infrastructure.storage.StorageException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +44,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "A user with this email or nickname already exists"));
+    }
+
+    @ExceptionHandler(VideoNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleVideoNotFound(VideoNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(VideoAccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleVideoAccessDenied(VideoAccessDeniedException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<Map<String, String>> handleStorageException(StorageException ex) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Storage error occurred"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

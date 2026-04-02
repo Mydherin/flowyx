@@ -1,5 +1,6 @@
 package dev.skype.mic_flowyx.infrastructure.controllers;
 
+import dev.skype.mic_flowyx.domain.exceptions.ShareNotFoundException;
 import dev.skype.mic_flowyx.domain.exceptions.UserAlreadyExistsException;
 import dev.skype.mic_flowyx.domain.exceptions.UserNotFoundException;
 import dev.skype.mic_flowyx.domain.exceptions.VideoAccessDeniedException;
@@ -44,6 +45,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "A user with this email or nickname already exists"));
+    }
+
+    @ExceptionHandler(ShareNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleShareNotFound(ShareNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
     }
 
     @ExceptionHandler(VideoNotFoundException.class)

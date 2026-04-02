@@ -2,10 +2,14 @@ package dev.skype.mic_flowyx.domain.repositories;
 
 import dev.skype.mic_flowyx.domain.entities.User;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface UserRepository {
     Optional<User> findByEmail(String email);
+    Optional<User> findById(UUID id);
+    List<User> searchByNicknameOrEmail(String query, UUID excludeUserId);
     User save(User user);
     User update(User user);
 }

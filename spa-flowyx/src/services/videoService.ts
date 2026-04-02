@@ -83,4 +83,20 @@ export const videoService = {
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
   },
+
+  listShared: () => request<Video[]>('/api/v1/videos/shared'),
+
+  bulkDelete: (ids: string[]) =>
+    request<{ deletedIds: string[] }>('/api/v1/videos/bulk', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoIds: ids }),
+    }),
+
+  bulkUpdateTags: (ids: string[], tags: string[]) =>
+    request<Video[]>('/api/v1/videos/bulk-tags', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoIds: ids, tags }),
+    }),
 }

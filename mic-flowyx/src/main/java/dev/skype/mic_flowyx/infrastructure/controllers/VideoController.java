@@ -1,9 +1,9 @@
 package dev.skype.mic_flowyx.infrastructure.controllers;
 
+import dev.skype.mic_flowyx.application.usecases.sharing.GetSharedVideosUseCase;
 import dev.skype.mic_flowyx.application.usecases.video.*;
 import dev.skype.mic_flowyx.domain.entities.Video;
-import dev.skype.mic_flowyx.infrastructure.controllers.dto.UpdateVideoRequest;
-import dev.skype.mic_flowyx.infrastructure.controllers.dto.VideoResponse;
+import dev.skype.mic_flowyx.infrastructure.controllers.dto.*;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,17 +24,26 @@ public class VideoController {
     private final GetVideoUseCase getVideoUseCase;
     private final UpdateVideoUseCase updateVideoUseCase;
     private final DeleteVideoUseCase deleteVideoUseCase;
+    private final GetSharedVideosUseCase getSharedVideosUseCase;
+    private final BulkDeleteVideosUseCase bulkDeleteVideosUseCase;
+    private final BulkUpdateTagsUseCase bulkUpdateTagsUseCase;
 
     public VideoController(UploadVideoUseCase uploadVideoUseCase,
                            GetVideosUseCase getVideosUseCase,
                            GetVideoUseCase getVideoUseCase,
                            UpdateVideoUseCase updateVideoUseCase,
-                           DeleteVideoUseCase deleteVideoUseCase) {
+                           DeleteVideoUseCase deleteVideoUseCase,
+                           GetSharedVideosUseCase getSharedVideosUseCase,
+                           BulkDeleteVideosUseCase bulkDeleteVideosUseCase,
+                           BulkUpdateTagsUseCase bulkUpdateTagsUseCase) {
         this.uploadVideoUseCase = uploadVideoUseCase;
         this.getVideosUseCase = getVideosUseCase;
         this.getVideoUseCase = getVideoUseCase;
         this.updateVideoUseCase = updateVideoUseCase;
         this.deleteVideoUseCase = deleteVideoUseCase;
+        this.getSharedVideosUseCase = getSharedVideosUseCase;
+        this.bulkDeleteVideosUseCase = bulkDeleteVideosUseCase;
+        this.bulkUpdateTagsUseCase = bulkUpdateTagsUseCase;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -75,6 +84,14 @@ public class VideoController {
         return ResponseEntity.ok(videos.stream().map(VideoResponse::fromDomain).toList());
     }
 
+    @GetMapping("/shared")
+    public ResponseEntity<List<VideoResponse>> listSharedWithMe(
+            @AuthenticationPrincipal String userEmail
+    ) {
+        List<VideoWithUrls> videos = getSharedVideosUseCase.execute(userEmail);
+        return ResponseEntity.ok(videos.stream().map(VideoResponse::fromDomain).toList());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<VideoResponse> getVideo(
             @PathVariable UUID id,
@@ -104,6 +121,28 @@ public class VideoController {
     ) {
         deleteVideoUseCase.execute(id, userEmail);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/bulk")
+    public ResponseEntity<BulkDeleteResponse> bulkDelete(
+            @RequestBody BulkDeleteRequest request,
+            @AuthenticationPrincipal String userEmail
+    ) {
+        List<UUID> deleted = bulkDeleteVideosUseCase.execute(request.videoIds(), userEmail);
+        return ResponseEntity.ok(new BulkDeleteResponse(deleted));
+    }
+
+    @PatchMapping("/bulk-tags")
+    public ResponseEntity<List<VideoResponse>> bulkUpdateTags(
+            @RequestBody BulkUpdateTagsRequest request,
+            @AuthenticationPrincipal String userEmail
+    ) {
+        List<Video> updated = bulkUpdateTagsUseCase.execute(request.videoIds(), request.tags(), userEmail);
+        List<VideoResponse> responses = updated.stream()
+                .map(v -> getVideoUseCase.execute(v.id(), userEmail))
+                .map(VideoResponse::fromDomain)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 
     private List<String> parseTags(String tags) {

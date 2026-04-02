@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0004-create-video-shares-table
+      author: flowyx
+      changes:
+        - createTable:
+            tableName: video_shares
+            columns:
+              - column:
+                  name: video_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shared_with_user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shared_by_user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: NOW()
+        - addPrimaryKey:
+            tableName: video_shares
+            columnNames: video_id, shared_with_user_id
+            constraintName: pk_video_shares
+        - addForeignKeyConstraint:
+            baseTableName: video_shares
+            baseColumnNames: video_id
+            referencedTableName: videos
+            referencedColumnNames: id
+            constraintName: fk_video_shares_video_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: video_shares
+            baseColumnNames: shared_with_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_video_shares_shared_with_user_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: video_shares
+            baseColumnNames: shared_by_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_video_shares_shared_by_user_id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_video_shares_shared_with_user_id
+            tableName: video_shares
+            columns:
+              - column:
+                  name: shared_with_user_id

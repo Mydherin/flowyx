@@ -2,38 +2,65 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Upload, Film } from 'lucide-react'
 import type { Video } from '../types/video'
 import { videoService } from '../services/videoService'
-import { VideoCard } from '../components/video/VideoCard'
+import { VideoGalleryCard } from '../components/video/VideoGalleryCard'
 import { VideoPlayer } from '../components/video/VideoPlayer'
 import { TagFilter } from '../components/video/TagFilter'
 import { UploadModal } from '../components/video/UploadModal'
 import { EditModal } from '../components/video/EditModal'
+import { SelectionBar } from '../components/video/SelectionBar'
+import { BulkTagEditModal } from '../components/video/BulkTagEditModal'
+import { ShareModal } from '../features/sharing/components/ShareModal'
 import { Button } from '../components/ui/Button'
 
+type Tab = 'mine' | 'shared'
+
 export function DashboardPage() {
-  // Always holds the full unfiltered list for the current user
+  // ─── My Videos ───────────────────────────────────────────────────────────────
   const [allVideos, setAllVideos] = useState<Video[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadingMine, setLoadingMine] = useState(true)
   const [activeTags, setActiveTags] = useState<string[]>([])
-  const [showUpload, setShowUpload] = useState(false)
-  const [editingVideo, setEditingVideo] = useState<Video | null>(null)
-  const [playerIndex, setPlayerIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // All unique tags across the user's videos — used for filter bar + autocomplete
+  // ─── Shared with me ───────────────────────────────────────────────────────────
+  const [sharedVideos, setSharedVideos] = useState<Video[]>([])
+  const [loadingShared, setLoadingShared] = useState(false)
+  const [sharedFetched, setSharedFetched] = useState(false)
+
+  // ─── Tabs ─────────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<Tab>('mine')
+
+  // ─── Player ──────────────────────────────────────────────────────────────────
+  const [playerIndex, setPlayerIndex] = useState<number | null>(null)
+  const [playerVideos, setPlayerVideos] = useState<Video[]>([])
+
+  // ─── Modals ──────────────────────────────────────────────────────────────────
+  const [showUpload, setShowUpload] = useState(false)
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null)
+  const [showBulkTagEdit, setShowBulkTagEdit] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+
+  // ─── Selection mode ───────────────────────────────────────────────────────────
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // ─── Derived ─────────────────────────────────────────────────────────────────
   const allTags = useMemo(() => {
     const set = new Set<string>()
     allVideos.forEach((v) => v.tags.forEach((t) => set.add(t)))
     return Array.from(set).sort()
   }, [allVideos])
 
-  // Client-side tag filter (AND semantics: video must have ALL active tags)
   const visibleVideos = useMemo(() => {
     if (!activeTags.length) return allVideos
     return allVideos.filter((v) => activeTags.every((t) => v.tags.includes(t)))
   }, [allVideos, activeTags])
 
-  const fetchVideos = useCallback(async () => {
-    setLoading(true)
+  const selectedCount = selectedIds.size
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds])
+
+  // ─── Data fetching ────────────────────────────────────────────────────────────
+  const fetchMyVideos = useCallback(async () => {
+    setLoadingMine(true)
     setError(null)
     try {
       const data = await videoService.list()
@@ -41,58 +68,202 @@ export function DashboardPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load videos')
     } finally {
-      setLoading(false)
+      setLoadingMine(false)
+    }
+  }, [])
+
+  const fetchSharedVideos = useCallback(async () => {
+    setLoadingShared(true)
+    try {
+      const data = await videoService.listShared()
+      setSharedVideos(data)
+      setSharedFetched(true)
+    } catch {
+      // silently fail; user sees empty state
+    } finally {
+      setLoadingShared(false)
     }
   }, [])
 
   useEffect(() => {
-    void fetchVideos()
-  }, [fetchVideos])
+    void fetchMyVideos()
+  }, [fetchMyVideos])
 
-  // Optimistic delete — instant removal, revert on error
+  // Lazy-load shared videos on first tab switch
+  useEffect(() => {
+    if (activeTab === 'shared' && !sharedFetched) {
+      void fetchSharedVideos()
+    }
+  }, [activeTab, sharedFetched, fetchSharedVideos])
+
+  // ─── Selection handlers ───────────────────────────────────────────────────────
+  const enterSelectMode = (id: string) => {
+    setIsSelectMode(true)
+    setSelectedIds(new Set([id]))
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  // ─── Bulk delete ──────────────────────────────────────────────────────────────
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    const snapshot = allVideos
+    setAllVideos((prev) => prev.filter((v) => !selectedIds.has(v.id)))
+    exitSelectMode()
+    try {
+      const result = await videoService.bulkDelete(selectedIdsArray)
+      // Reconcile: restore any that the server didn't delete
+      const deletedSet = new Set(result.deletedIds.map(String))
+      setAllVideos((prev) => {
+        const stillMissing = snapshot.filter((v) => selectedIds.has(v.id) && !deletedSet.has(v.id))
+        return [...prev, ...stillMissing]
+      })
+    } catch {
+      setAllVideos(snapshot)
+      setError('Failed to delete videos')
+    }
+  }
+
+  // ─── Single video delete ──────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     const snapshot = allVideos
     setAllVideos((prev) => prev.filter((v) => v.id !== id))
     try {
       await videoService.delete(id)
-    } catch (err) {
+    } catch {
       setAllVideos(snapshot)
-      setError(err instanceof Error ? err.message : 'Failed to delete video')
+      setError('Failed to delete video')
     }
   }
 
-  const handlePlay = (video: Video) => {
-    const idx = visibleVideos.findIndex((v) => v.id === video.id)
-    if (idx !== -1) setPlayerIndex(idx)
+  // ─── Play ─────────────────────────────────────────────────────────────────────
+  const handlePlay = (video: Video, source: Video[]) => {
+    if (isSelectMode) return
+    const idx = source.findIndex((v) => v.id === video.id)
+    if (idx !== -1) {
+      setPlayerVideos(source)
+      setPlayerIndex(idx)
+    }
   }
+
+  // ─── Render helpers ───────────────────────────────────────────────────────────
+  const renderGallery = (videos: Video[], readOnly: boolean) => {
+    if (videos.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <Film size={24} className="text-text-muted" />
+          </div>
+          <div>
+            <p className="text-text-primary font-medium text-sm">
+              {readOnly ? 'No videos shared with you yet' : activeTags.length > 0 ? 'No videos match these tags' : 'No videos yet'}
+            </p>
+            <p className="text-text-muted text-xs mt-1">
+              {readOnly ? 'Videos shared by other members will appear here' : activeTags.length > 0 ? 'Try adjusting your filters' : 'Upload your first dance move to get started'}
+            </p>
+          </div>
+          {!readOnly && activeTags.length === 0 && (
+            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)} className="gap-1.5">
+              <Upload size={13} />
+              Upload video
+            </Button>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-0.5">
+        {videos.map((video) => (
+          <VideoGalleryCard
+            key={video.id}
+            video={video}
+            isSelectMode={!readOnly && isSelectMode}
+            isSelected={selectedIds.has(video.id)}
+            onTap={() => handlePlay(video, videos)}
+            onLongPress={() => !readOnly && enterSelectMode(video.id)}
+            onToggleSelect={() => toggleSelect(video.id)}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const loading = activeTab === 'mine' ? loadingMine : loadingShared
 
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page header */}
-      <div className="flex items-start justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-white tracking-tight">Your Videos</h1>
-          <p className="text-text-muted text-sm mt-0.5">
-            {loading
-              ? '…'
-              : activeTags.length
-              ? `${visibleVideos.length} of ${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
-              : `${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setShowUpload(true)}
-          className="shrink-0 gap-1.5"
-        >
-          <Upload size={13} />
-          Upload
-        </Button>
+      <div className="flex items-start justify-between mb-4 gap-4">
+        {isSelectMode ? (
+          <>
+            <span className="text-text-primary font-semibold text-sm mt-1">
+              {selectedCount} selected
+            </span>
+            <button
+              type="button"
+              onClick={exitSelectMode}
+              className="text-text-muted hover:text-white text-sm transition-colors mt-1"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <h1 className="text-xl font-semibold text-white tracking-tight">Videos</h1>
+              <p className="text-text-muted text-sm mt-0.5">
+                {loadingMine ? '…' : activeTab === 'mine'
+                  ? activeTags.length
+                    ? `${visibleVideos.length} of ${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
+                    : `${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
+                  : `${sharedVideos.length} shared`}
+              </p>
+            </div>
+            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)} className="shrink-0 gap-1.5">
+              <Upload size={13} />
+              Upload
+            </Button>
+          </>
+        )}
       </div>
 
-      {/* Tag filter — horizontal scroll, shows all tags */}
-      {allTags.length > 0 && (
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 border-b border-border-default">
+        {(['mine', 'shared'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => { setActiveTab(tab); exitSelectMode() }}
+            className={[
+              'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+              activeTab === tab
+                ? 'text-white border-white'
+                : 'text-text-muted border-transparent hover:text-text-secondary',
+            ].join(' ')}
+          >
+            {tab === 'mine' ? 'My Videos' : 'Shared with me'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tag filter — only for my videos */}
+      {activeTab === 'mine' && allTags.length > 0 && !isSelectMode && (
         <TagFilter tags={allTags} activeTags={activeTags} onChange={setActiveTags} />
       )}
 
@@ -105,94 +276,84 @@ export function DashboardPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-bg-secondary border border-border-default rounded-xl overflow-hidden animate-pulse"
-            >
-              <div className="aspect-video bg-bg-tertiary" />
-              <div className="p-3 flex flex-col gap-2">
-                <div className="h-3.5 bg-bg-tertiary rounded w-3/4" />
-                <div className="h-3 bg-bg-tertiary rounded w-1/2" />
-              </div>
-            </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-0.5">
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} className="aspect-video bg-bg-secondary animate-pulse rounded-sm" />
           ))}
         </div>
-      ) : visibleVideos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-            <Film size={24} className="text-text-muted" />
-          </div>
-          <div>
-            <p className="text-text-primary font-medium text-sm">
-              {activeTags.length > 0 ? 'No videos match these tags' : 'No videos yet'}
-            </p>
-            <p className="text-text-muted text-xs mt-1">
-              {activeTags.length > 0
-                ? 'Try adjusting your filters'
-                : 'Upload your first dance move to get started'}
-            </p>
-          </div>
-          {activeTags.length === 0 && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowUpload(true)}
-              className="gap-1.5"
-            >
-              <Upload size={13} />
-              Upload video
-            </Button>
-          )}
-        </div>
+      ) : activeTab === 'mine' ? (
+        renderGallery(visibleVideos, false)
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {visibleVideos.map((video) => (
-            <VideoCard
-              key={video.id}
-              video={video}
-              onPlay={handlePlay}
-              onEdit={setEditingVideo}
-              onDelete={(id) => void handleDelete(id)}
-            />
-          ))}
-        </div>
+        renderGallery(sharedVideos, true)
       )}
 
-      {/* Instagram-style video player */}
+      {/* Video player */}
       {playerIndex !== null && (
         <VideoPlayer
-          videos={visibleVideos}
+          videos={playerVideos}
           initialIndex={playerIndex}
           onClose={() => setPlayerIndex(null)}
         />
       )}
 
-      {/* Upload modal */}
+      {/* Selection bar */}
+      {isSelectMode && (
+        <SelectionBar
+          count={selectedCount}
+          onEditTags={() => setShowBulkTagEdit(true)}
+          onDelete={() => void handleBulkDelete()}
+          onShare={() => setShowShareModal(true)}
+          onCancel={exitSelectMode}
+        />
+      )}
+
+      {/* Modals */}
       {showUpload && (
         <UploadModal
           existingTags={allTags}
           onClose={() => setShowUpload(false)}
-          onSuccess={() => {
-            setShowUpload(false)
-            void fetchVideos()
-          }}
+          onSuccess={() => { setShowUpload(false); void fetchMyVideos() }}
         />
       )}
 
-      {/* Edit modal */}
       {editingVideo && (
         <EditModal
           video={editingVideo}
           existingTags={allTags}
           onClose={() => setEditingVideo(null)}
-          onSuccess={() => {
-            setEditingVideo(null)
-            void fetchVideos()
+          onSuccess={() => { setEditingVideo(null); void fetchMyVideos() }}
+        />
+      )}
+
+      {showBulkTagEdit && (
+        <BulkTagEditModal
+          videoIds={selectedIdsArray}
+          existingTags={allTags}
+          onClose={() => setShowBulkTagEdit(false)}
+          onSuccess={(updated) => {
+            setAllVideos((prev) =>
+              prev.map((v) => updated.find((u) => u.id === v.id) ?? v)
+            )
+            setShowBulkTagEdit(false)
+            exitSelectMode()
           }}
         />
       )}
+
+      {showShareModal && (
+        <ShareModal
+          videoIds={selectedIdsArray}
+          onClose={() => setShowShareModal(false)}
+          onSuccess={() => {
+            // Refresh my videos to update sharedWithCount badges
+            void fetchMyVideos()
+            exitSelectMode()
+          }}
+        />
+      )}
+
+      {/* Bottom padding when SelectionBar is visible */}
+      {isSelectMode && <div className="h-20" />}
     </div>
   )
 }

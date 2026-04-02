@@ -10,4 +10,14 @@ export interface Video {
   status: 'PROCESSING' | 'READY' | 'FAILED'
   createdAt: string
   updatedAt: string
+  sharedWithCount: number
+  isOwner: boolean
+}
+
+export interface VideoShare {
+  userId: string
+  nickname: string
+  email: string
+  pictureUrl: string | null
+  sharedAt: string
 }

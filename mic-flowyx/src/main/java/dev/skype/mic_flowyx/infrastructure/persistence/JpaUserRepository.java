@@ -4,7 +4,9 @@ import dev.skype.mic_flowyx.domain.entities.User;
 import dev.skype.mic_flowyx.domain.repositories.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class JpaUserRepository implements UserRepository {
@@ -18,6 +20,18 @@ public class JpaUserRepository implements UserRepository {
     @Override
     public Optional<User> findByEmail(String email) {
         return springDataRepo.findByEmail(email).map(UserJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<User> findById(UUID id) {
+        return springDataRepo.findById(id).map(UserJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<User> searchByNicknameOrEmail(String query, UUID excludeUserId) {
+        return springDataRepo.searchByNicknameOrEmail(query, excludeUserId).stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

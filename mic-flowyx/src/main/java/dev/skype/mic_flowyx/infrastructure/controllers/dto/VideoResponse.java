@@ -17,7 +17,9 @@ public record VideoResponse(
         String contentType,
         String status,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        int sharedWithCount,
+        boolean isOwner
 ) {
     public static VideoResponse fromDomain(VideoWithUrls v) {
         return new VideoResponse(
@@ -31,7 +33,9 @@ public record VideoResponse(
                 v.video().contentType(),
                 v.video().status().name(),
                 v.video().createdAt(),
-                v.video().updatedAt()
+                v.video().updatedAt(),
+                v.sharedWithCount(),
+                v.isOwner()
         );
     }
 }

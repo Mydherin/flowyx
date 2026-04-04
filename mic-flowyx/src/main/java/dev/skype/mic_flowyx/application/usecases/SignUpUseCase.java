@@ -1,5 +1,6 @@
 package dev.skype.mic_flowyx.application.usecases;
 
+import dev.skype.mic_flowyx.application.ports.StoragePort;
 import dev.skype.mic_flowyx.domain.entities.Role;
 import dev.skype.mic_flowyx.domain.entities.User;
 import dev.skype.mic_flowyx.domain.exceptions.UserAlreadyExistsException;
@@ -12,9 +13,11 @@ import java.time.OffsetDateTime;
 public class SignUpUseCase {
 
     private final UserRepository userRepository;
+    private final StoragePort storagePort;
 
-    public SignUpUseCase(UserRepository userRepository) {
+    public SignUpUseCase(UserRepository userRepository, StoragePort storagePort) {
         this.userRepository = userRepository;
+        this.storagePort = storagePort;
     }
 
     public User execute(SignUpCommand command) {
@@ -27,15 +30,23 @@ public class SignUpUseCase {
             throw new UserAlreadyExistsException(command.email());
         }
 
+        String pictureUrl = resolveAvatarUrl(command.uuid().toString(), command.picture());
+
         User newUser = new User(
                 command.uuid(),
                 command.nickname(),
                 command.email().toLowerCase(),
-                command.picture(),
+                pictureUrl,
                 Role.USER,
                 OffsetDateTime.now()
         );
 
         return userRepository.save(newUser);
+    }
+
+    private String resolveAvatarUrl(String userId, String googlePictureUrl) {
+        if (googlePictureUrl == null) return null;
+        String key = storagePort.storeFromUrl("avatars/" + userId, googlePictureUrl);
+        return key != null ? storagePort.getObjectUrl(key) : googlePictureUrl;
     }
 }

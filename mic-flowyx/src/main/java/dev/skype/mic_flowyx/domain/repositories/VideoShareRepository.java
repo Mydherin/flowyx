@@ -11,6 +11,7 @@ public interface VideoShareRepository {
     void delete(UUID videoId, UUID sharedWithUserId);
     List<VideoShare> findByVideoId(UUID videoId);
     List<UUID> findVideoIdsBySharedWithUserId(UUID userId);
+    List<VideoShare> findBySharedWithUserId(UUID userId);
     boolean exists(UUID videoId, UUID sharedWithUserId);
     int countByVideoId(UUID videoId);
 }

@@ -5,12 +5,15 @@ interface SelectionBarProps {
   onEditTags: () => void
   onDelete: () => void
   onShare: () => void
-  onCancel: () => void
 }
 
-export function SelectionBar({ count, onEditTags, onDelete, onShare, onCancel }: SelectionBarProps) {
+export function SelectionBar({ count, onEditTags, onDelete, onShare }: SelectionBarProps) {
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-4 py-3 bg-bg-secondary/95 backdrop-blur-md border-t border-border-default safe-area-inset-bottom">
+    // stopPropagation prevents document-level click listener from dismissing select mode
+    <div
+      className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-4 py-3 bg-bg-secondary/95 backdrop-blur-md border-t border-border-default"
+      onClick={(e) => e.stopPropagation()}
+    >
       <span className="text-text-secondary text-sm font-medium shrink-0">
         {count} selected
       </span>
@@ -50,13 +53,8 @@ export function SelectionBar({ count, onEditTags, onDelete, onShare, onCancel }:
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onCancel}
-        className="text-text-muted hover:text-white text-sm transition-colors shrink-0"
-      >
-        Cancel
-      </button>
+      {/* Spacer to balance the left count text */}
+      <div className="w-20 shrink-0" />
     </div>
   )
 }

@@ -23,7 +23,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   }
 
-  return response.json() as Promise<T>
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T
+  }
+
+  const text = await response.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 export const api = {

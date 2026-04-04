@@ -10,6 +10,7 @@ import { EditModal } from '../components/video/EditModal'
 import { SelectionBar } from '../components/video/SelectionBar'
 import { BulkTagEditModal } from '../components/video/BulkTagEditModal'
 import { ShareModal } from '../features/sharing/components/ShareModal'
+import { SharerSelect } from '../components/video/SharerSelect'
 import { Button } from '../components/ui/Button'
 
 type Tab = 'mine' | 'shared'
@@ -24,7 +25,8 @@ export function DashboardPage() {
   // ─── Shared with me ───────────────────────────────────────────────────────────
   const [sharedVideos, setSharedVideos] = useState<Video[]>([])
   const [loadingShared, setLoadingShared] = useState(false)
-  const [sharedFetched, setSharedFetched] = useState(false)
+  const [selectedSharerId, setSelectedSharerId] = useState<string | null>(null)
+  const [activeSharedTags, setActiveSharedTags] = useState<string[]>([])
 
   // ─── Tabs ─────────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<Tab>('mine')
@@ -44,6 +46,18 @@ export function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // ─── Derived ─────────────────────────────────────────────────────────────────
+  const selectedVideos = useMemo(
+    () => allVideos.filter((v) => selectedIds.has(v.id)),
+    [allVideos, selectedIds]
+  )
+
+  const commonTags = useMemo(() => {
+    if (selectedVideos.length === 0) return []
+    return selectedVideos[0].tags.filter((tag) =>
+      selectedVideos.every((v) => v.tags.includes(tag))
+    )
+  }, [selectedVideos])
+
   const allTags = useMemo(() => {
     const set = new Set<string>()
     allVideos.forEach((v) => v.tags.forEach((t) => set.add(t)))
@@ -57,6 +71,35 @@ export function DashboardPage() {
 
   const selectedCount = selectedIds.size
   const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds])
+
+  // ─── Shared tab derived ───────────────────────────────────────────────────────
+  const sharers = useMemo(() => {
+    const seen = new Set<string>()
+    const result: { id: string; nickname: string | null; pictureUrl: string | null }[] = []
+    for (const v of sharedVideos) {
+      if (v.sharedByUserId && !seen.has(v.sharedByUserId)) {
+        seen.add(v.sharedByUserId)
+        result.push({ id: v.sharedByUserId, nickname: v.sharedByNickname, pictureUrl: v.sharedByPictureUrl })
+      }
+    }
+    return result
+  }, [sharedVideos])
+
+  const sharedBySelected = useMemo(
+    () => selectedSharerId ? sharedVideos.filter((v) => v.sharedByUserId === selectedSharerId) : sharedVideos,
+    [sharedVideos, selectedSharerId]
+  )
+
+  const sharedTags = useMemo(() => {
+    const set = new Set<string>()
+    sharedBySelected.forEach((v) => v.tags.forEach((t) => set.add(t)))
+    return Array.from(set).sort()
+  }, [sharedBySelected])
+
+  const visibleSharedVideos = useMemo(() => {
+    if (!activeSharedTags.length) return sharedBySelected
+    return sharedBySelected.filter((v) => activeSharedTags.every((t) => v.tags.includes(t)))
+  }, [sharedBySelected, activeSharedTags])
 
   // ─── Data fetching ────────────────────────────────────────────────────────────
   const fetchMyVideos = useCallback(async () => {
@@ -77,7 +120,10 @@ export function DashboardPage() {
     try {
       const data = await videoService.listShared()
       setSharedVideos(data)
-      setSharedFetched(true)
+      // Auto-select first sharer; reset tags on each refresh
+      const firstSharerId = data.find((v) => v.sharedByUserId)?.sharedByUserId ?? null
+      setSelectedSharerId(firstSharerId)
+      setActiveSharedTags([])
     } catch {
       // silently fail; user sees empty state
     } finally {
@@ -85,53 +131,57 @@ export function DashboardPage() {
     }
   }, [])
 
+  // Fetch the active tab's data on every tab switch (and on mount for 'mine')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    void fetchMyVideos()
-  }, [fetchMyVideos])
+    if (activeTab === 'mine') void fetchMyVideos()
+    else void fetchSharedVideos()
+  }, [activeTab])
 
-  // Lazy-load shared videos on first tab switch
-  useEffect(() => {
-    if (activeTab === 'shared' && !sharedFetched) {
-      void fetchSharedVideos()
-    }
-  }, [activeTab, sharedFetched, fetchSharedVideos])
-
-  // ─── Selection handlers ───────────────────────────────────────────────────────
-  const enterSelectMode = (id: string) => {
-    setIsSelectMode(true)
-    setSelectedIds(new Set([id]))
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const exitSelectMode = () => {
+  // ─── Selection mode ───────────────────────────────────────────────────────────
+  const exitSelectMode = useCallback(() => {
     setIsSelectMode(false)
     setSelectedIds(new Set())
-  }
+  }, [])
+
+  const enterSelectMode = useCallback((id: string) => {
+    setIsSelectMode(true)
+    setSelectedIds(new Set([id]))
+  }, [])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  // Document-level click listener exits select mode when clicking anywhere outside
+  // of a VideoGalleryCard (which stops propagation) or SelectionBar (which also stops propagation).
+  // Suspended while any modal is open so modal interactions don't dismiss select mode.
+  const anyModalOpen = showBulkTagEdit || showShareModal || showUpload || !!editingVideo || playerIndex !== null
+  useEffect(() => {
+    if (!isSelectMode || anyModalOpen) return
+    document.addEventListener('click', exitSelectMode)
+    return () => document.removeEventListener('click', exitSelectMode)
+  }, [isSelectMode, anyModalOpen, exitSelectMode])
 
   // ─── Bulk delete ──────────────────────────────────────────────────────────────
   const handleBulkDelete = async () => {
     if (!window.confirm(`Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}? This cannot be undone.`)) return
     const snapshot = allVideos
-    setAllVideos((prev) => prev.filter((v) => !selectedIds.has(v.id)))
+    const idsToDelete = new Set(selectedIds) // capture before exit
+    setAllVideos((prev) => prev.filter((v) => !idsToDelete.has(v.id)))
     exitSelectMode()
     try {
-      const result = await videoService.bulkDelete(selectedIdsArray)
-      // Reconcile: restore any that the server didn't delete
+      const result = await videoService.bulkDelete(Array.from(idsToDelete))
       const deletedSet = new Set(result.deletedIds.map(String))
+      // Restore any that the server didn't delete
       setAllVideos((prev) => {
-        const stillMissing = snapshot.filter((v) => selectedIds.has(v.id) && !deletedSet.has(v.id))
-        return [...prev, ...stillMissing]
+        const notDeleted = snapshot.filter((v) => idsToDelete.has(v.id) && !deletedSet.has(v.id))
+        return notDeleted.length ? [...prev, ...notDeleted] : prev
       })
     } catch {
       setAllVideos(snapshot)
@@ -153,7 +203,6 @@ export function DashboardPage() {
 
   // ─── Play ─────────────────────────────────────────────────────────────────────
   const handlePlay = (video: Video, source: Video[]) => {
-    if (isSelectMode) return
     const idx = source.findIndex((v) => v.id === video.id)
     if (idx !== -1) {
       setPlayerVideos(source)
@@ -171,10 +220,22 @@ export function DashboardPage() {
           </div>
           <div>
             <p className="text-text-primary font-medium text-sm">
-              {readOnly ? 'No videos shared with you yet' : activeTags.length > 0 ? 'No videos match these tags' : 'No videos yet'}
+              {readOnly
+                ? activeSharedTags.length > 0
+                  ? 'No videos match these tags'
+                  : 'No videos shared with you yet'
+                : activeTags.length > 0
+                ? 'No videos match these tags'
+                : 'No videos yet'}
             </p>
             <p className="text-text-muted text-xs mt-1">
-              {readOnly ? 'Videos shared by other members will appear here' : activeTags.length > 0 ? 'Try adjusting your filters' : 'Upload your first dance move to get started'}
+              {readOnly
+                ? activeSharedTags.length > 0
+                  ? 'Try adjusting your filters'
+                  : 'Videos shared by other members will appear here'
+                : activeTags.length > 0
+                ? 'Try adjusting your filters'
+                : 'Upload your first dance move to get started'}
             </p>
           </div>
           {!readOnly && activeTags.length === 0 && (
@@ -208,39 +269,35 @@ export function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Page header */}
+      {/* Page header — always the same layout; Upload exits select mode if active */}
       <div className="flex items-start justify-between mb-4 gap-4">
-        {isSelectMode ? (
-          <>
-            <span className="text-text-primary font-semibold text-sm mt-1">
-              {selectedCount} selected
-            </span>
-            <button
-              type="button"
-              onClick={exitSelectMode}
-              className="text-text-muted hover:text-white text-sm transition-colors mt-1"
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <>
-            <div>
-              <h1 className="text-xl font-semibold text-white tracking-tight">Videos</h1>
-              <p className="text-text-muted text-sm mt-0.5">
-                {loadingMine ? '…' : activeTab === 'mine'
-                  ? activeTags.length
-                    ? `${visibleVideos.length} of ${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
-                    : `${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
-                  : `${sharedVideos.length} shared`}
-              </p>
-            </div>
-            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)} className="shrink-0 gap-1.5">
-              <Upload size={13} />
-              Upload
-            </Button>
-          </>
-        )}
+        <div>
+          <h1 className="text-xl font-semibold text-white tracking-tight">Videos</h1>
+          <p className="text-text-muted text-sm mt-0.5">
+            {loadingMine
+              ? '…'
+              : activeTab === 'mine'
+              ? activeTags.length
+                ? `${visibleVideos.length} of ${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
+                : `${allVideos.length} video${allVideos.length !== 1 ? 's' : ''}`
+              : activeSharedTags.length
+              ? `${visibleSharedVideos.length} of ${sharedBySelected.length} video${sharedBySelected.length !== 1 ? 's' : ''}`
+              : `${sharedBySelected.length} video${sharedBySelected.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation() // prevent document listener from immediately dismissing
+            exitSelectMode()
+            setShowUpload(true)
+          }}
+          className="shrink-0 gap-1.5"
+        >
+          <Upload size={13} />
+          Upload
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -249,7 +306,11 @@ export function DashboardPage() {
           <button
             key={tab}
             type="button"
-            onClick={() => { setActiveTab(tab); exitSelectMode() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setActiveTab(tab)
+              exitSelectMode()
+            }}
             className={[
               'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
               activeTab === tab
@@ -262,9 +323,28 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* Tag filter — only for my videos */}
-      {activeTab === 'mine' && allTags.length > 0 && !isSelectMode && (
-        <TagFilter tags={allTags} activeTags={activeTags} onChange={setActiveTags} />
+      {/* Tag filter — my videos tab */}
+      {activeTab === 'mine' && allTags.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <TagFilter tags={allTags} activeTags={activeTags} onChange={setActiveTags} />
+        </div>
+      )}
+
+      {/* Sharer selector + tag filter — shared tab */}
+      {activeTab === 'shared' && sharers.length > 0 && (
+        <div className="mb-4 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-3">
+            <span className="text-text-muted text-xs font-medium uppercase tracking-wide shrink-0">From</span>
+            <SharerSelect
+              sharers={sharers}
+              selectedId={selectedSharerId}
+              onChange={(id) => { setSelectedSharerId(id); setActiveSharedTags([]) }}
+            />
+          </div>
+          {sharedTags.length > 0 && (
+            <TagFilter tags={sharedTags} activeTags={activeSharedTags} onChange={setActiveSharedTags} />
+          )}
+        </div>
       )}
 
       {/* Error */}
@@ -284,7 +364,7 @@ export function DashboardPage() {
       ) : activeTab === 'mine' ? (
         renderGallery(visibleVideos, false)
       ) : (
-        renderGallery(sharedVideos, true)
+        renderGallery(visibleSharedVideos, true)
       )}
 
       {/* Video player */}
@@ -296,14 +376,13 @@ export function DashboardPage() {
         />
       )}
 
-      {/* Selection bar */}
+      {/* Selection bar — only shown in select mode */}
       {isSelectMode && (
         <SelectionBar
           count={selectedCount}
           onEditTags={() => setShowBulkTagEdit(true)}
           onDelete={() => void handleBulkDelete()}
           onShare={() => setShowShareModal(true)}
-          onCancel={exitSelectMode}
         />
       )}
 
@@ -328,12 +407,11 @@ export function DashboardPage() {
       {showBulkTagEdit && (
         <BulkTagEditModal
           videoIds={selectedIdsArray}
+          initialTags={commonTags}
           existingTags={allTags}
           onClose={() => setShowBulkTagEdit(false)}
           onSuccess={(updated) => {
-            setAllVideos((prev) =>
-              prev.map((v) => updated.find((u) => u.id === v.id) ?? v)
-            )
+            setAllVideos((prev) => prev.map((v) => updated.find((u) => u.id === v.id) ?? v))
             setShowBulkTagEdit(false)
             exitSelectMode()
           }}
@@ -343,16 +421,21 @@ export function DashboardPage() {
       {showShareModal && (
         <ShareModal
           videoIds={selectedIdsArray}
-          onClose={() => setShowShareModal(false)}
-          onSuccess={() => {
-            // Refresh my videos to update sharedWithCount badges
-            void fetchMyVideos()
+          onClose={(result) => {
+            setShowShareModal(false)
             exitSelectMode()
+            if (result && selectedIdsArray.length === 1) {
+              const videoId = selectedIdsArray[0]
+              const count = result.shares.length
+              setAllVideos((prev) =>
+                prev.map((v) => (v.id === videoId ? { ...v, sharedWithCount: count } : v))
+              )
+            }
           }}
         />
       )}
 
-      {/* Bottom padding when SelectionBar is visible */}
+      {/* Bottom padding so content isn't hidden behind SelectionBar */}
       {isSelectMode && <div className="h-20" />}
     </div>
   )

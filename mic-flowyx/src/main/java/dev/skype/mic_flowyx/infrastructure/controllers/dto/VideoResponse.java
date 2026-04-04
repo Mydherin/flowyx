@@ -19,7 +19,10 @@ public record VideoResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         int sharedWithCount,
-        boolean isOwner
+        boolean isOwner,
+        UUID sharedByUserId,
+        String sharedByNickname,
+        String sharedByPictureUrl
 ) {
     public static VideoResponse fromDomain(VideoWithUrls v) {
         return new VideoResponse(
@@ -35,7 +38,10 @@ public record VideoResponse(
                 v.video().createdAt(),
                 v.video().updatedAt(),
                 v.sharedWithCount(),
-                v.isOwner()
+                v.isOwner(),
+                v.sharedByUserId(),
+                v.sharedByNickname(),
+                v.sharedByPictureUrl()
         );
     }
 }

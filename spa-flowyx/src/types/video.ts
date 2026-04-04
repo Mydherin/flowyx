@@ -12,6 +12,9 @@ export interface Video {
   updatedAt: string
   sharedWithCount: number
   isOwner: boolean
+  sharedByUserId: string | null
+  sharedByNickname: string | null
+  sharedByPictureUrl: string | null
 }
 
 export interface VideoShare {

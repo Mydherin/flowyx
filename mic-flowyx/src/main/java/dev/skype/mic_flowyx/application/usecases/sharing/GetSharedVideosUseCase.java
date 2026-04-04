@@ -10,7 +10,6 @@ import dev.skype.mic_flowyx.domain.repositories.VideoShareRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class GetSharedVideosUseCase {
@@ -34,18 +33,23 @@ public class GetSharedVideosUseCase {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UserNotFoundException(userEmail));
 
-        List<UUID> sharedVideoIds = videoShareRepository.findVideoIdsBySharedWithUserId(user.id());
-
-        return sharedVideoIds.stream()
-                .map(id -> videoRepository.findById(id).orElse(null))
+        return videoShareRepository.findBySharedWithUserId(user.id()).stream()
+                .map(share -> {
+                    var video = videoRepository.findById(share.videoId()).orElse(null);
+                    if (video == null) return null;
+                    var sharedBy = userRepository.findById(share.sharedByUserId()).orElse(null);
+                    return new VideoWithUrls(
+                            video,
+                            storagePort.getObjectUrl(video.videoKey()),
+                            video.thumbnailKey() != null ? storagePort.getObjectUrl(video.thumbnailKey()) : null,
+                            0,
+                            false,
+                            sharedBy != null ? sharedBy.id() : share.sharedByUserId(),
+                            sharedBy != null ? sharedBy.nickname() : null,
+                            sharedBy != null ? sharedBy.pictureUrl() : null
+                    );
+                })
                 .filter(v -> v != null)
-                .map(v -> new VideoWithUrls(
-                        v,
-                        storagePort.getObjectUrl(v.videoKey()),
-                        v.thumbnailKey() != null ? storagePort.getObjectUrl(v.thumbnailKey()) : null,
-                        0,
-                        false
-                ))
                 .toList();
     }
 }

@@ -7,13 +7,14 @@ import { TagInput } from '../ui/TagInput'
 
 interface BulkTagEditModalProps {
   videoIds: string[]
+  initialTags: string[]
   existingTags: string[]
   onClose: () => void
   onSuccess: (updated: Video[]) => void
 }
 
-export function BulkTagEditModal({ videoIds, existingTags, onClose, onSuccess }: BulkTagEditModalProps) {
-  const [tags, setTags] = useState<string[]>([])
+export function BulkTagEditModal({ videoIds, initialTags, existingTags, onClose, onSuccess }: BulkTagEditModalProps) {
+  const [tags, setTags] = useState<string[]>(initialTags)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,7 +53,7 @@ export function BulkTagEditModal({ videoIds, existingTags, onClose, onSuccess }:
 
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-text-secondary text-xs font-medium">New tags</label>
+            <label className="text-text-secondary text-xs font-medium">Tags</label>
             <TagInput
               value={tags}
               onChange={setTags}
@@ -75,7 +76,7 @@ export function BulkTagEditModal({ videoIds, existingTags, onClose, onSuccess }:
               variant="primary"
               size="md"
               type="submit"
-              disabled={saving || tags.length === 0}
+              disabled={saving}
               className="flex-1"
             >
               {saving ? 'Saving…' : 'Apply tags'}

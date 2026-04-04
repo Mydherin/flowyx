@@ -14,6 +14,8 @@ interface SpringDataVideoShareRepository extends JpaRepository<VideoShareJpaEnti
     @Query("SELECT s.videoId FROM VideoShareJpaEntity s WHERE s.sharedWithUserId = :userId")
     List<UUID> findVideoIdsBySharedWithUserId(@Param("userId") UUID userId);
 
+    List<VideoShareJpaEntity> findBySharedWithUserId(UUID sharedWithUserId);
+
     boolean existsByVideoIdAndSharedWithUserId(UUID videoId, UUID sharedWithUserId);
 
     void deleteByVideoIdAndSharedWithUserId(UUID videoId, UUID sharedWithUserId);

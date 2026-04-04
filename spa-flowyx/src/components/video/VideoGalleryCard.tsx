@@ -60,7 +60,7 @@ export function VideoGalleryCard({
       onTouchStart={startPress}
       onTouchEnd={cancelPress}
       onTouchCancel={cancelPress}
-      onClick={handleClick}
+      onClick={(e) => { e.stopPropagation(); handleClick() }}
     >
       {/* Thumbnail */}
       {video.thumbnailUrl ? (

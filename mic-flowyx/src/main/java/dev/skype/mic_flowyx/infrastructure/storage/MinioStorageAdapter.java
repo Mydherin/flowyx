@@ -3,12 +3,19 @@ package dev.skype.mic_flowyx.infrastructure.storage;
 import dev.skype.mic_flowyx.application.ports.StoragePort;
 import dev.skype.mic_flowyx.infrastructure.config.MinioProperties;
 import io.minio.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 
 @Service
 public class MinioStorageAdapter implements StoragePort {
+
+    private static final Logger log = LoggerFactory.getLogger(MinioStorageAdapter.class);
 
     private final MinioClient minioClient;
     private final MinioProperties properties;
@@ -47,6 +54,28 @@ public class MinioStorageAdapter implements StoragePort {
                     .build());
         } catch (Exception e) {
             throw new StorageException("Failed to delete: " + key, e);
+        }
+    }
+
+    @Override
+    public String storeFromUrl(String key, String sourceUrl) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) URI.create(sourceUrl).toURL().openConnection();
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(8000);
+            conn.connect();
+            String contentType = conn.getContentType();
+            if (contentType == null) contentType = "image/jpeg";
+            int semi = contentType.indexOf(';');
+            if (semi != -1) contentType = contentType.substring(0, semi).trim();
+            try (InputStream is = conn.getInputStream()) {
+                byte[] bytes = is.readAllBytes();
+                upload(key, new ByteArrayInputStream(bytes), bytes.length, contentType);
+            }
+            return key;
+        } catch (Exception e) {
+            log.warn("Failed to store resource from URL '{}' under key '{}': {}", sourceUrl, key, e.getMessage());
+            return null;
         }
     }
 

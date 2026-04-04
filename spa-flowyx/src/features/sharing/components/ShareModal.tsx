@@ -8,11 +8,10 @@ import { UserSearchInput } from './UserSearchInput'
 
 interface ShareModalProps {
   videoIds: string[]
-  onClose: () => void
-  onSuccess: () => void
+  onClose: (result?: { shares: VideoShare[] }) => void
 }
 
-export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
+export function ShareModal({ videoIds, onClose }: ShareModalProps) {
   const [shares, setShares] = useState<VideoShare[]>([])
   const [loadingShares, setLoadingShares] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -48,21 +47,18 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
         await shareService.bulkShare(videoIds, [user.id])
       } else {
         await shareService.share(videoIds[0], [user.id])
-        await loadShares()
       }
-      if (isBulk) {
-        // For bulk we show a synthetic share entry
-        const newShare: VideoShare = {
-          userId: user.id,
-          nickname: user.nickname,
-          email: user.email,
-          pictureUrl: user.pictureUrl,
-          sharedAt: new Date().toISOString(),
-        }
-        setShares((prev) => [...prev.filter((s) => s.userId !== user.id), newShare])
+      // Optimistically add to list so it's visible immediately
+      const newShare: VideoShare = {
+        userId: user.id,
+        nickname: user.nickname,
+        email: user.email,
+        pictureUrl: user.pictureUrl,
+        sharedAt: new Date().toISOString(),
       }
+      setShares((prev) => [...prev.filter((s) => s.userId !== user.id), newShare])
     } catch {
-      setError('Failed to share')
+      setError('Failed to add member')
     } finally {
       setAddingId(null)
     }
@@ -77,9 +73,10 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
       } else {
         await shareService.unshare(videoIds[0], userId)
       }
+      // Optimistically remove from list
       setShares((prev) => prev.filter((s) => s.userId !== userId))
     } catch {
-      setError('Failed to remove share')
+      setError('Failed to remove member')
     } finally {
       setRemovingId(null)
     }
@@ -89,7 +86,9 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => onClose(isBulk ? undefined : { shares })} />
+
       <div className="relative w-full sm:max-w-md bg-bg-secondary border-0 sm:border sm:border-border-default rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
@@ -100,7 +99,7 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
             )}
           </div>
           <button
-            onClick={onClose}
+            onClick={() => onClose(isBulk ? undefined : { shares })}
             className="text-text-muted hover:text-white transition-colors p-1 rounded-md hover:bg-white/5"
           >
             <X size={16} />
@@ -109,11 +108,15 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
 
         {/* Search */}
         <div className="px-6 pb-4 shrink-0">
-          <UserSearchInput alreadySharedIds={alreadySharedIds} onSelect={(u) => void handleAdd(u)} />
+          <UserSearchInput
+            alreadySharedIds={alreadySharedIds}
+            addingId={addingId}
+            onSelect={(u) => void handleAdd(u)}
+          />
         </div>
 
         {/* Shares list */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
           {error && (
             <div className="mb-3 px-3 py-2 rounded-lg bg-red-950/60 border border-red-900/40 text-red-400 text-sm">
               {error}
@@ -136,25 +139,35 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
               <p className="text-text-muted text-sm">Not shared with anyone yet</p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col gap-0.5">
               {shares.map((share) => (
-                <li key={share.userId} className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/3 transition-colors group">
+                <li
+                  key={share.userId}
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/3 transition-colors"
+                >
                   {share.pictureUrl ? (
-                    <img src={share.pictureUrl} alt={share.nickname} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    <img
+                      src={share.pictureUrl}
+                      alt={share.nickname}
+                      className="w-8 h-8 rounded-full object-cover shrink-0"
+                    />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                      <span className="text-xs text-text-muted font-medium">{share.nickname[0]?.toUpperCase()}</span>
+                      <span className="text-xs text-text-muted font-medium">
+                        {share.nickname[0]?.toUpperCase()}
+                      </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-text-primary text-sm font-medium truncate">{share.nickname}</p>
                     <p className="text-text-muted text-xs truncate">{share.email}</p>
                   </div>
+                  {/* Always visible remove button */}
                   <button
                     type="button"
                     onClick={() => void handleRemove(share.userId)}
                     disabled={removingId === share.userId || addingId !== null}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-all disabled:opacity-30"
+                    className="p-1.5 rounded-md text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors disabled:opacity-30 shrink-0"
                     title="Remove access"
                   >
                     {removingId === share.userId ? (
@@ -170,8 +183,8 @@ export function ShareModal({ videoIds, onClose, onSuccess }: ShareModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 pt-2 shrink-0 border-t border-border-default">
-          <Button variant="ghost" size="md" onClick={() => { onSuccess(); onClose() }} className="w-full">
+        <div className="px-6 py-4 shrink-0 border-t border-border-default">
+          <Button variant="ghost" size="md" onClick={() => onClose(isBulk ? undefined : { shares })} className="w-full">
             Done
           </Button>
         </div>

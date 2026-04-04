@@ -5,10 +5,11 @@ import type { UserSearchResult } from '../../../types/sharing'
 
 interface UserSearchInputProps {
   alreadySharedIds: Set<string>
+  addingId: string | null
   onSelect: (user: UserSearchResult) => void
 }
 
-export function UserSearchInput({ alreadySharedIds, onSelect }: UserSearchInputProps) {
+export function UserSearchInput({ alreadySharedIds, addingId, onSelect }: UserSearchInputProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserSearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,8 +85,8 @@ export function UserSearchInput({ alreadySharedIds, onSelect }: UserSearchInputP
               <button
                 key={user.id}
                 type="button"
-                onMouseDown={() => !alreadyAdded && handleSelect(user)}
-                disabled={alreadyAdded}
+                onMouseDown={() => !alreadyAdded && !addingId && handleSelect(user)}
+                disabled={alreadyAdded || addingId !== null}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-default"
               >
                 {user.pictureUrl ? (

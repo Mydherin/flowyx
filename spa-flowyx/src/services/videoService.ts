@@ -25,6 +25,7 @@ export const videoService = {
     formData: FormData,
     onProgress: (percent: number) => void,
     signal: AbortSignal,
+    onProcessing?: () => void,
   ): Promise<Video> {
     return new Promise((resolve, reject) => {
       const token = useAuthStore.getState().user?.accessToken
@@ -33,8 +34,10 @@ export const videoService = {
       if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
 
       xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 95))
       })
+
+      xhr.upload.addEventListener('load', () => onProcessing?.())
 
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {

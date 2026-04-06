@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { X, Upload, Film, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { X, Upload, Film, CheckCircle2, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 import { videoService } from '../../services/videoService'
 import { captureVideoThumbnail } from '../../lib/thumbnail'
 import { Button } from '../ui/Button'
@@ -10,10 +10,8 @@ interface UploadItem {
   file: File
   thumbnail: Blob | null
   thumbnailPreview: string | null
-  tags: string[]
-  tagsOpen: boolean
   progress: number
-  status: 'pending' | 'uploading' | 'done' | 'error' | 'cancelled'
+  status: 'pending' | 'uploading' | 'processing' | 'done' | 'error' | 'cancelled'
   error: string | null
   controller: AbortController
 }
@@ -27,6 +25,7 @@ interface UploadModalProps {
 export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalProps) {
   const [items, setItems] = useState<UploadItem[]>([])
   const [uploading, setUploading] = useState(false)
+  const [globalTags, setGlobalTags] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -44,8 +43,6 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
         file,
         thumbnail: null,
         thumbnailPreview: null,
-        tags: [],
-        tagsOpen: false,
         progress: 0,
         status: 'pending',
         error: null,
@@ -96,12 +93,13 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
           formData.append('video', item.file)
           if (item.thumbnail) formData.append('thumbnail', item.thumbnail, 'thumbnail.jpg')
           formData.append('description', '')
-          formData.append('tags', item.tags.join(','))
+          formData.append('tags', globalTags.join(','))
 
           await videoService.uploadWithProgress(
             formData,
             (pct) => updateItem(item.id, { progress: pct }),
             item.controller.signal,
+            () => updateItem(item.id, { status: 'processing', progress: 95 }),
           )
           updateItem(item.id, { status: 'done', progress: 100 })
         } catch (err) {
@@ -141,6 +139,7 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
 
   const pendingCount = items.filter((it) => it.status === 'pending').length
   const successCount = items.filter((it) => it.status === 'done').length
+  const doneCount = items.filter((it) => it.status === 'done').length
   const allSettled =
     items.length > 0 && items.every((it) => ['done', 'error', 'cancelled'].includes(it.status))
 
@@ -153,7 +152,18 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
       <div className="relative w-full sm:max-w-lg bg-bg-secondary border-0 sm:border sm:border-border-default rounded-t-2xl sm:rounded-2xl max-h-[90dvh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
-          <h2 className="text-text-primary font-semibold text-base">Upload videos</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-text-primary font-semibold text-base">Upload videos</h2>
+            {items.length > 0 && (
+              <span className="text-text-muted text-xs">
+                {allSettled
+                  ? `${successCount} uploaded`
+                  : uploading
+                    ? `${doneCount} of ${items.length} done`
+                    : null}
+              </span>
+            )}
+          </div>
           <button
             onClick={uploading ? undefined : onClose}
             disabled={uploading}
@@ -202,6 +212,34 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
             onChange={handleFileInputChange}
           />
 
+          {/* Global tags section */}
+          {items.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-text-secondary text-xs font-medium">
+                Tags — applied to all videos
+              </label>
+              {!uploading ? (
+                <TagInput
+                  value={globalTags}
+                  onChange={setGlobalTags}
+                  suggestions={existingTags}
+                  placeholder="Add tags…"
+                />
+              ) : globalTags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 py-1">
+                  {globalTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="flex items-center px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white text-xs"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {/* File list */}
           {items.length > 0 && (
             <div className="flex flex-col gap-2 pb-2">
@@ -209,9 +247,6 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
                 <UploadItemRow
                   key={item.id}
                   item={item}
-                  existingTags={existingTags}
-                  onTagsChange={(tags) => updateItem(item.id, { tags })}
-                  onToggleTags={() => updateItem(item.id, { tagsOpen: !item.tagsOpen })}
                   onRemove={() => removeItem(item.id)}
                   onCancel={() => cancelItem(item)}
                   onRetry={() => retryItem(item.id)}
@@ -283,25 +318,16 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
 
 interface UploadItemRowProps {
   item: UploadItem
-  existingTags: string[]
-  onTagsChange: (tags: string[]) => void
-  onToggleTags: () => void
   onRemove: () => void
   onCancel: () => void
   onRetry: () => void
 }
 
-function UploadItemRow({
-  item,
-  existingTags,
-  onTagsChange,
-  onToggleTags,
-  onRemove,
-  onCancel,
-  onRetry,
-}: UploadItemRowProps) {
+function UploadItemRow({ item, onRemove, onCancel, onRetry }: UploadItemRowProps) {
   const isPending = item.status === 'pending'
   const isUploading = item.status === 'uploading'
+  const isProcessing = item.status === 'processing'
+  const isActive = isUploading || isProcessing
 
   return (
     <div className="bg-bg-tertiary border border-border-default rounded-xl overflow-hidden">
@@ -320,15 +346,21 @@ function UploadItemRow({
           <p className="text-text-primary text-xs font-medium truncate">{item.file.name}</p>
           <p className="text-text-muted text-xs">
             {(item.file.size / 1024 / 1024).toFixed(1)} MB
-            {item.status === 'uploading' && (
+            {isUploading && (
               <span className="ml-1 tabular-nums">{item.progress}%</span>
             )}
+            {isProcessing && (
+              <span className="ml-1">Processing…</span>
+            )}
           </p>
-          {isUploading && (
+          {isActive && (
             <div className="mt-1.5 h-1 bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-white rounded-full transition-[width] duration-200"
-                style={{ width: `${item.progress}%` }}
+                className={[
+                  'h-full rounded-full transition-[width] duration-200',
+                  isProcessing ? 'bg-white/60 animate-pulse w-[95%]' : 'bg-white',
+                ].join(' ')}
+                style={isUploading ? { width: `${item.progress}%` } : undefined}
               />
             </div>
           )}
@@ -343,6 +375,7 @@ function UploadItemRow({
         {/* Status icon + actions */}
         <div className="flex items-center gap-1 shrink-0">
           {item.status === 'done' && <CheckCircle2 size={15} className="text-green-400" />}
+          {isProcessing && <Loader2 size={15} className="animate-spin text-text-muted" />}
           {item.status === 'error' && (
             <>
               <AlertCircle size={15} className="text-red-400" />
@@ -375,40 +408,15 @@ function UploadItemRow({
             </button>
           )}
           {isPending && (
-            <>
-              <button
-                onClick={onToggleTags}
-                className={[
-                  'text-xs px-1.5 py-0.5 rounded transition-colors',
-                  item.tagsOpen
-                    ? 'text-white bg-white/10'
-                    : 'text-text-muted hover:text-white hover:bg-white/5',
-                ].join(' ')}
-              >
-                {item.tags.length > 0 ? `${item.tags.length} tag${item.tags.length > 1 ? 's' : ''}` : 'Tags'}
-              </button>
-              <button
-                onClick={onRemove}
-                className="text-text-muted hover:text-white transition-colors p-1 rounded hover:bg-white/5"
-              >
-                <X size={13} />
-              </button>
-            </>
+            <button
+              onClick={onRemove}
+              className="text-text-muted hover:text-white transition-colors p-1 rounded hover:bg-white/5"
+            >
+              <X size={13} />
+            </button>
           )}
         </div>
       </div>
-
-      {/* Inline tag input — only for pending items */}
-      {item.tagsOpen && isPending && (
-        <div className="px-3 pb-3 pt-1 border-t border-white/5">
-          <TagInput
-            value={item.tags}
-            onChange={onTagsChange}
-            suggestions={existingTags.filter((t) => !item.tags.includes(t))}
-            placeholder="Add tags…"
-          />
-        </div>
-      )}
     </div>
   )
 }

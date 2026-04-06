@@ -13,4 +13,7 @@ public interface StoragePort {
      * can fall back to the original URL.
      */
     String storeFromUrl(String key, String sourceUrl);
+
+    /** Opens a stream for reading the object at {@code key}. Caller must close the stream. */
+    InputStream getObject(String key);
 }

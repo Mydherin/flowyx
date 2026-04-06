@@ -5,6 +5,7 @@ import dev.skype.mic_flowyx.domain.repositories.VideoShareRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -60,5 +61,11 @@ public class JpaVideoShareRepository implements VideoShareRepository {
     @Override
     public int countByVideoId(UUID videoId) {
         return springDataRepo.countByVideoId(videoId);
+    }
+
+    @Override
+    @Transactional
+    public void markViewed(UUID videoId, UUID viewerId) {
+        springDataRepo.markViewed(videoId, viewerId, OffsetDateTime.now());
     }
 }

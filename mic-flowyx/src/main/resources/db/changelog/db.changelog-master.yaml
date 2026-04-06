@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/0004-create-video-shares-table.yaml
   - include:
       file: db/changelog/changes/0005-add-index-videos-video-key.yaml
+  - include:
+      file: db/changelog/changes/0006-add-viewed-at-to-video-shares.yaml

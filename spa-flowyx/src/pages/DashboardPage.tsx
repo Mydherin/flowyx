@@ -168,6 +168,17 @@ export function DashboardPage() {
     return () => document.removeEventListener('click', exitSelectMode)
   }, [isSelectMode, anyModalOpen, exitSelectMode])
 
+  // ─── Bulk download ────────────────────────────────────────────────────────────
+  const handleBulkDownload = async () => {
+    const ids = Array.from(selectedIds)
+    exitSelectMode()
+    try {
+      await videoService.download(ids)
+    } catch {
+      setError('Failed to download videos')
+    }
+  }
+
   // ─── Bulk add to mine (shared tab) ───────────────────────────────────────────
   const handleBulkAddToMine = async () => {
     const ids = Array.from(selectedIds)
@@ -369,6 +380,9 @@ export function DashboardPage() {
           videos={playerVideos}
           initialIndex={playerIndex}
           onClose={() => setPlayerIndex(null)}
+          onVideoViewed={(id) => {
+            setSharedVideos((prev) => prev.map((v) => v.id === id ? { ...v, isNew: false } : v))
+          }}
         />
       )}
 
@@ -380,6 +394,7 @@ export function DashboardPage() {
           onShare={activeTab === 'mine' ? () => setShowShareModal(true) : undefined}
           onDelete={activeTab === 'mine' ? () => void handleBulkDelete() : undefined}
           onAddToMine={activeTab === 'shared' ? () => void handleBulkAddToMine() : undefined}
+          onDownload={() => void handleBulkDownload()}
         />
       )}
 

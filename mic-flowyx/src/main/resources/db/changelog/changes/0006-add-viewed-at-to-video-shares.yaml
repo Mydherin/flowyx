@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0006-add-viewed-at-to-video-shares
+      author: system
+      changes:
+        - addColumn:
+            tableName: video_shares
+            columns:
+              - column:
+                  name: viewed_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: UPDATE video_shares SET viewed_at = created_at

@@ -22,7 +22,8 @@ public record VideoResponse(
         boolean isOwner,
         UUID sharedByUserId,
         String sharedByNickname,
-        String sharedByPictureUrl
+        String sharedByPictureUrl,
+        boolean isNew
 ) {
     public static VideoResponse fromDomain(VideoWithUrls v) {
         return new VideoResponse(
@@ -41,7 +42,8 @@ public record VideoResponse(
                 v.isOwner(),
                 v.sharedByUserId(),
                 v.sharedByNickname(),
-                v.sharedByPictureUrl()
+                v.sharedByPictureUrl(),
+                v.isNew()
         );
     }
 }

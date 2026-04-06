@@ -12,10 +12,11 @@ public record VideoWithUrls(
         boolean isOwner,
         UUID sharedByUserId,
         String sharedByNickname,
-        String sharedByPictureUrl
+        String sharedByPictureUrl,
+        boolean isNew
 ) {
     /** Convenience constructor for owned/single-video use cases where sharedBy is not applicable. */
     public VideoWithUrls(Video video, String videoUrl, String thumbnailUrl, int sharedWithCount, boolean isOwner) {
-        this(video, videoUrl, thumbnailUrl, sharedWithCount, isOwner, null, null, null);
+        this(video, videoUrl, thumbnailUrl, sharedWithCount, isOwner, null, null, null, false);
     }
 }

@@ -1,9 +1,12 @@
 package dev.skype.mic_flowyx.infrastructure.controllers;
 
 import dev.skype.mic_flowyx.application.usecases.sharing.GetSharedVideosUseCase;
+import dev.skype.mic_flowyx.application.usecases.sharing.MarkVideoViewedUseCase;
 import dev.skype.mic_flowyx.application.usecases.video.*;
 import dev.skype.mic_flowyx.domain.entities.Video;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.*;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,6 +32,8 @@ public class VideoController {
     private final BulkUpdateTagsUseCase bulkUpdateTagsUseCase;
     private final CloneVideoUseCase cloneVideoUseCase;
     private final BulkCloneVideosUseCase bulkCloneVideosUseCase;
+    private final MarkVideoViewedUseCase markVideoViewedUseCase;
+    private final DownloadVideosUseCase downloadVideosUseCase;
 
     public VideoController(UploadVideoUseCase uploadVideoUseCase,
                            GetVideosUseCase getVideosUseCase,
@@ -39,7 +44,9 @@ public class VideoController {
                            BulkDeleteVideosUseCase bulkDeleteVideosUseCase,
                            BulkUpdateTagsUseCase bulkUpdateTagsUseCase,
                            CloneVideoUseCase cloneVideoUseCase,
-                           BulkCloneVideosUseCase bulkCloneVideosUseCase) {
+                           BulkCloneVideosUseCase bulkCloneVideosUseCase,
+                           MarkVideoViewedUseCase markVideoViewedUseCase,
+                           DownloadVideosUseCase downloadVideosUseCase) {
         this.uploadVideoUseCase = uploadVideoUseCase;
         this.getVideosUseCase = getVideosUseCase;
         this.getVideoUseCase = getVideoUseCase;
@@ -50,6 +57,8 @@ public class VideoController {
         this.bulkUpdateTagsUseCase = bulkUpdateTagsUseCase;
         this.cloneVideoUseCase = cloneVideoUseCase;
         this.bulkCloneVideosUseCase = bulkCloneVideosUseCase;
+        this.markVideoViewedUseCase = markVideoViewedUseCase;
+        this.downloadVideosUseCase = downloadVideosUseCase;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -172,6 +181,26 @@ public class VideoController {
                 .map(VideoResponse::fromDomain)
                 .toList();
         return ResponseEntity.ok(responses);
+    }
+
+    @PostMapping("/{id}/viewed")
+    public ResponseEntity<Void> markViewed(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal String userEmail
+    ) {
+        markVideoViewedUseCase.execute(id, userEmail);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/download")
+    public void downloadVideos(
+            @RequestBody DownloadRequest request,
+            @AuthenticationPrincipal String userEmail,
+            HttpServletResponse response
+    ) throws IOException {
+        response.setContentType("application/zip");
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"videos.zip\"");
+        downloadVideosUseCase.execute(request.videoIds(), userEmail, response.getOutputStream());
     }
 
     private List<String> parseTags(String tags) {

@@ -90,6 +90,13 @@ export function VideoGalleryCard({
         </div>
       )}
 
+      {/* Top-left: New badge for unseen shared videos */}
+      {video.isNew && !isSelectMode && (
+        <span className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-blue-500 text-white leading-none">
+          New
+        </span>
+      )}
+
       {/* Top-right indicator: share badge OR selection checkbox */}
       {isSelectMode ? (
         <div

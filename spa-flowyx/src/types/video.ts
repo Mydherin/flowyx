@@ -15,6 +15,7 @@ export interface Video {
   sharedByUserId: string | null
   sharedByNickname: string | null
   sharedByPictureUrl: string | null
+  isNew: boolean
 }
 
 export interface VideoShare {

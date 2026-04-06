@@ -1,4 +1,4 @@
-import { Tag, Trash2, Share2, Download } from 'lucide-react'
+import { Tag, Trash2, Share2, Download, FolderDown } from 'lucide-react'
 
 interface SelectionBarProps {
   count: number
@@ -6,9 +6,10 @@ interface SelectionBarProps {
   onShare?: () => void
   onDelete?: () => void
   onAddToMine?: () => void
+  onDownload?: () => void
 }
 
-export function SelectionBar({ count, onEditTags, onShare, onDelete, onAddToMine }: SelectionBarProps) {
+export function SelectionBar({ count, onEditTags, onShare, onDelete, onAddToMine, onDownload }: SelectionBarProps) {
   return (
     // stopPropagation prevents document-level click listener from dismissing select mode
     <div
@@ -69,6 +70,19 @@ export function SelectionBar({ count, onEditTags, onShare, onDelete, onAddToMine
           >
             <Download size={18} />
             <span className="text-[10px]">Add to mine</span>
+          </button>
+        )}
+
+        {onDownload && (
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={count === 0}
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Download"
+          >
+            <FolderDown size={18} />
+            <span className="text-[10px]">Download</span>
           </button>
         )}
       </div>

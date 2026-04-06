@@ -31,16 +31,20 @@ class VideoShareJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "viewed_at")
+    private OffsetDateTime viewedAt;
+
     static VideoShareJpaEntity fromDomain(VideoShare share) {
         return VideoShareJpaEntity.builder()
                 .videoId(share.videoId())
                 .sharedWithUserId(share.sharedWithUserId())
                 .sharedByUserId(share.sharedByUserId())
                 .createdAt(share.createdAt())
+                .viewedAt(share.viewedAt())
                 .build();
     }
 
     VideoShare toDomain() {
-        return new VideoShare(videoId, sharedWithUserId, sharedByUserId, createdAt);
+        return new VideoShare(videoId, sharedWithUserId, sharedByUserId, createdAt, viewedAt);
     }
 }

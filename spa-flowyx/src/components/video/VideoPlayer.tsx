@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX, Loader2, Download, Check } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX, Loader2, Download, Check, FileDown } from 'lucide-react'
 import type { Video } from '../../types/video'
 import { videoService } from '../../services/videoService'
 
@@ -9,6 +9,7 @@ interface VideoPlayerProps {
   videos: Video[]
   initialIndex: number
   onClose: () => void
+  onVideoViewed?: (id: string) => void
 }
 
 interface ProgressBarProps {
@@ -481,7 +482,7 @@ function useVideoPlayer(videos: Video[], initialIndex: number, onClose: () => vo
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function VideoPlayer({ videos, initialIndex, onClose }: VideoPlayerProps) {
+export function VideoPlayer({ videos, initialIndex, onClose, onVideoViewed }: VideoPlayerProps) {
   const {
     videoRef,
     wrapperRef,
@@ -536,6 +537,15 @@ export function VideoPlayer({ videos, initialIndex, onClose }: VideoPlayerProps)
       setCloningId(null)
     }
   }
+
+  // ── Mark shared video as viewed on first open ─────────────────────────────
+  useEffect(() => {
+    if (current.isNew && current.sharedByUserId) {
+      videoService.markViewed(current.id).catch(() => {})
+      onVideoViewed?.(current.id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.id])
 
   return (
     <div
@@ -642,34 +652,47 @@ export function VideoPlayer({ videos, initialIndex, onClose }: VideoPlayerProps)
           </span>
         </div>
 
-        {/* Add to My Videos — only shown for shared videos */}
-        {current.sharedByUserId && (
+        <div className="flex items-center gap-2">
+          {/* Add to My Videos — only shown for shared videos */}
+          {current.sharedByUserId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); void handleAddToMine(current.id) }}
+              disabled={!!cloningId}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium
+                         bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10
+                         text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Add to my videos"
+            >
+              {clonedIds.has(current.id) ? (
+                <>
+                  <Check size={13} className="text-green-400" />
+                  <span className="text-green-400">Added</span>
+                </>
+              ) : cloningId === current.id ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Adding…</span>
+                </>
+              ) : (
+                <>
+                  <Download size={13} />
+                  <span>Add to my videos</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Download current video */}
           <button
-            onClick={(e) => { e.stopPropagation(); void handleAddToMine(current.id) }}
-            disabled={!!cloningId}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium
+            onClick={(e) => { e.stopPropagation(); void videoService.download([current.id]) }}
+            className="w-8 h-8 flex items-center justify-center rounded-full
                        bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10
-                       text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Add to my videos"
+                       text-white transition-colors"
+            title="Download"
           >
-            {clonedIds.has(current.id) ? (
-              <>
-                <Check size={13} className="text-green-400" />
-                <span className="text-green-400">Added</span>
-              </>
-            ) : cloningId === current.id ? (
-              <>
-                <Loader2 size={13} className="animate-spin" />
-                <span>Adding…</span>
-              </>
-            ) : (
-              <>
-                <Download size={13} />
-                <span>Add to my videos</span>
-              </>
-            )}
+            <FileDown size={14} />
           </button>
-        )}
+        </div>
       </div>
 
       {/* ── Left / Right nav arrows (desktop) ── */}

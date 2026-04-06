@@ -47,7 +47,7 @@ public class ShareVideosUseCase {
                 .flatMap(videoId -> sharedWithUserIds.stream()
                         .filter(userId -> !userId.equals(owner.id()))
                         .filter(userId -> !videoShareRepository.exists(videoId, userId))
-                        .map(userId -> new VideoShare(videoId, userId, owner.id(), OffsetDateTime.now())))
+                        .map(userId -> new VideoShare(videoId, userId, owner.id(), OffsetDateTime.now(), null)))
                 .toList();
 
         if (!newShares.isEmpty()) {

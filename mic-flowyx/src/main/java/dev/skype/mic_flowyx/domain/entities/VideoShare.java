@@ -7,5 +7,6 @@ public record VideoShare(
         UUID videoId,
         UUID sharedWithUserId,
         UUID sharedByUserId,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        OffsetDateTime viewedAt
 ) {}

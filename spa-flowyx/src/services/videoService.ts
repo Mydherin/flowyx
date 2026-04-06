@@ -109,4 +109,23 @@ export const videoService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoIds: ids }),
     }),
+
+  markViewed: (id: string) =>
+    request<void>(`/api/v1/videos/${id}/viewed`, { method: 'POST' }),
+
+  download: async (ids: string[]): Promise<void> => {
+    const response = await fetch(`${API_BASE}/api/v1/videos/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ videoIds: ids }),
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'videos.zip'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

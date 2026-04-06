@@ -46,10 +46,15 @@ public class GetSharedVideosUseCase {
                             false,
                             sharedBy != null ? sharedBy.id() : share.sharedByUserId(),
                             sharedBy != null ? sharedBy.nickname() : null,
-                            sharedBy != null ? sharedBy.pictureUrl() : null
+                            sharedBy != null ? sharedBy.pictureUrl() : null,
+                            share.viewedAt() == null
                     );
                 })
                 .filter(v -> v != null)
+                .sorted((a, b) -> {
+                    if (a.isNew() != b.isNew()) return a.isNew() ? -1 : 1;
+                    return b.video().createdAt().compareTo(a.video().createdAt());
+                })
                 .toList();
     }
 }

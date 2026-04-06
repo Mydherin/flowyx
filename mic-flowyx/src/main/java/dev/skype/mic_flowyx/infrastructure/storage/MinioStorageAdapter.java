@@ -79,6 +79,18 @@ public class MinioStorageAdapter implements StoragePort {
         }
     }
 
+    @Override
+    public InputStream getObject(String key) {
+        try {
+            return minioClient.getObject(GetObjectArgs.builder()
+                    .bucket(properties.bucket())
+                    .object(key)
+                    .build());
+        } catch (Exception e) {
+            throw new StorageException("Failed to get object: " + key, e);
+        }
+    }
+
     private void ensureBucketExists() throws Exception {
         boolean exists = minioClient.bucketExists(
                 BucketExistsArgs.builder().bucket(properties.bucket()).build()

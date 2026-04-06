@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX, Loader2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX, Loader2, Download, Check } from 'lucide-react'
 import type { Video } from '../../types/video'
+import { videoService } from '../../services/videoService'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -519,6 +520,23 @@ export function VideoPlayer({ videos, initialIndex, onClose }: VideoPlayerProps)
 
   const ctrlClass = `transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`
 
+  // ── Add to My Videos (shared videos only) ────────────────────────────────────
+  const [cloningId, setCloningId] = useState<string | null>(null)
+  const [clonedIds, setClonedIds] = useState<Set<string>>(new Set())
+
+  const handleAddToMine = async (videoId: string) => {
+    if (cloningId || clonedIds.has(videoId)) return
+    setCloningId(videoId)
+    try {
+      await videoService.clone(videoId)
+      setClonedIds((prev) => new Set(prev).add(videoId))
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setCloningId(null)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden"
@@ -623,6 +641,35 @@ export function VideoPlayer({ videos, initialIndex, onClose }: VideoPlayerProps)
             {index + 1} / {videos.length}
           </span>
         </div>
+
+        {/* Add to My Videos — only shown for shared videos */}
+        {current.sharedByUserId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); void handleAddToMine(current.id) }}
+            disabled={!!cloningId}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium
+                       bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10
+                       text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add to my videos"
+          >
+            {clonedIds.has(current.id) ? (
+              <>
+                <Check size={13} className="text-green-400" />
+                <span className="text-green-400">Added</span>
+              </>
+            ) : cloningId === current.id ? (
+              <>
+                <Loader2 size={13} className="animate-spin" />
+                <span>Adding…</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} />
+                <span>Add to my videos</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ── Left / Right nav arrows (desktop) ── */}

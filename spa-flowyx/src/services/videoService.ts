@@ -99,4 +99,14 @@ export const videoService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoIds: ids, tags }),
     }),
+
+  clone: (id: string) =>
+    request<Video>(`/api/v1/videos/${id}/clone`, { method: 'POST' }),
+
+  bulkClone: (ids: string[]) =>
+    request<Video[]>('/api/v1/videos/bulk-clone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoIds: ids }),
+    }),
 }

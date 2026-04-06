@@ -41,6 +41,17 @@ public class JpaVideoRepository implements VideoRepository {
     }
 
     @Override
+    public Optional<Video> findByUserIdAndVideoKey(UUID userId, String videoKey) {
+        return springDataRepo.findFirstByUserIdAndVideoKey(userId, videoKey)
+                .map(VideoJpaEntity::toDomain);
+    }
+
+    @Override
+    public int countByVideoKey(String videoKey) {
+        return springDataRepo.countByVideoKey(videoKey);
+    }
+
+    @Override
     @Transactional
     public Video update(Video video) {
         return springDataRepo.save(VideoJpaEntity.fromDomain(video)).toDomain();

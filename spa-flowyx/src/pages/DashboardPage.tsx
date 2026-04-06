@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Upload, Film } from 'lucide-react'
 import type { Video } from '../types/video'
 import { videoService } from '../services/videoService'
-import { VideoGalleryCard } from '../components/video/VideoGalleryCard'
 import { VideoPlayer } from '../components/video/VideoPlayer'
+import { VirtualizedVideoGrid } from '../components/video/VirtualizedVideoGrid'
 import { TagFilter } from '../components/video/TagFilter'
 import { UploadModal } from '../components/video/UploadModal'
 import { EditModal } from '../components/video/EditModal'
@@ -168,6 +168,19 @@ export function DashboardPage() {
     return () => document.removeEventListener('click', exitSelectMode)
   }, [isSelectMode, anyModalOpen, exitSelectMode])
 
+  // ─── Bulk add to mine (shared tab) ───────────────────────────────────────────
+  const handleBulkAddToMine = async () => {
+    const ids = Array.from(selectedIds)
+    exitSelectMode()
+    try {
+      await videoService.bulkClone(ids)
+      // Switch to My Videos so the user sees their new clones
+      setActiveTab('mine')
+    } catch {
+      setError('Failed to add videos to your library')
+    }
+  }
+
   // ─── Bulk delete ──────────────────────────────────────────────────────────────
   const handleBulkDelete = async () => {
     if (!window.confirm(`Delete ${selectedCount} video${selectedCount !== 1 ? 's' : ''}? This cannot be undone.`)) return
@@ -186,18 +199,6 @@ export function DashboardPage() {
     } catch {
       setAllVideos(snapshot)
       setError('Failed to delete videos')
-    }
-  }
-
-  // ─── Single video delete ──────────────────────────────────────────────────────
-  const handleDelete = async (id: string) => {
-    const snapshot = allVideos
-    setAllVideos((prev) => prev.filter((v) => v.id !== id))
-    try {
-      await videoService.delete(id)
-    } catch {
-      setAllVideos(snapshot)
-      setError('Failed to delete video')
     }
   }
 
@@ -249,19 +250,14 @@ export function DashboardPage() {
     }
 
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-0.5">
-        {videos.map((video) => (
-          <VideoGalleryCard
-            key={video.id}
-            video={video}
-            isSelectMode={!readOnly && isSelectMode}
-            isSelected={selectedIds.has(video.id)}
-            onTap={() => handlePlay(video, videos)}
-            onLongPress={() => !readOnly && enterSelectMode(video.id)}
-            onToggleSelect={() => toggleSelect(video.id)}
-          />
-        ))}
-      </div>
+      <VirtualizedVideoGrid
+        videos={videos}
+        isSelectMode={isSelectMode}
+        selectedIds={selectedIds}
+        onTap={(video) => handlePlay(video, videos)}
+        onLongPress={enterSelectMode}
+        onToggleSelect={toggleSelect}
+      />
     )
   }
 
@@ -376,13 +372,14 @@ export function DashboardPage() {
         />
       )}
 
-      {/* Selection bar — only shown in select mode */}
+      {/* Selection bar — actions differ by tab */}
       {isSelectMode && (
         <SelectionBar
           count={selectedCount}
-          onEditTags={() => setShowBulkTagEdit(true)}
-          onDelete={() => void handleBulkDelete()}
-          onShare={() => setShowShareModal(true)}
+          onEditTags={activeTab === 'mine' ? () => setShowBulkTagEdit(true) : undefined}
+          onShare={activeTab === 'mine' ? () => setShowShareModal(true) : undefined}
+          onDelete={activeTab === 'mine' ? () => void handleBulkDelete() : undefined}
+          onAddToMine={activeTab === 'shared' ? () => void handleBulkAddToMine() : undefined}
         />
       )}
 

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/0003-drop-title-from-videos.yaml
   - include:
       file: db/changelog/changes/0004-create-video-shares-table.yaml
+  - include:
+      file: db/changelog/changes/0005-add-index-videos-video-key.yaml

@@ -38,11 +38,17 @@ public class DeleteVideoUseCase {
             throw new VideoAccessDeniedException(videoId);
         }
 
-        storagePort.delete(video.videoKey());
-        if (video.thumbnailKey() != null) {
-            storagePort.delete(video.thumbnailKey());
-        }
+        // Count how many video records share the same S3 key before removing this one.
+        // Only delete the physical file when this is the last reference.
+        boolean isLastOwner = videoRepository.countByVideoKey(video.videoKey()) == 1;
 
         videoRepository.delete(videoId);
+
+        if (isLastOwner) {
+            storagePort.delete(video.videoKey());
+            if (video.thumbnailKey() != null) {
+                storagePort.delete(video.thumbnailKey());
+            }
+        }
     }
 }

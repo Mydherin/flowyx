@@ -36,11 +36,14 @@ public class BulkDeleteVideosUseCase {
         for (UUID id : videoIds) {
             videoRepository.findById(id).ifPresent(video -> {
                 if (video.userId().equals(user.id())) {
-                    storagePort.delete(video.videoKey());
-                    if (video.thumbnailKey() != null) {
-                        storagePort.delete(video.thumbnailKey());
-                    }
+                    boolean isLastOwner = videoRepository.countByVideoKey(video.videoKey()) == 1;
                     videoRepository.delete(id);
+                    if (isLastOwner) {
+                        storagePort.delete(video.videoKey());
+                        if (video.thumbnailKey() != null) {
+                            storagePort.delete(video.thumbnailKey());
+                        }
+                    }
                     deleted.add(id);
                 }
             });

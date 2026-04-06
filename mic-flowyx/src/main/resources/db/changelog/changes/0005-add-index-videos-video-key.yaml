@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0005-add-index-videos-video-key
+      author: system
+      changes:
+        - createIndex:
+            tableName: videos
+            indexName: idx_videos_video_key
+            columns:
+              - column:
+                  name: video_key

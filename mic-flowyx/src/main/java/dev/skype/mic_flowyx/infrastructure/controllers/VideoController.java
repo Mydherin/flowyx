@@ -27,6 +27,8 @@ public class VideoController {
     private final GetSharedVideosUseCase getSharedVideosUseCase;
     private final BulkDeleteVideosUseCase bulkDeleteVideosUseCase;
     private final BulkUpdateTagsUseCase bulkUpdateTagsUseCase;
+    private final CloneVideoUseCase cloneVideoUseCase;
+    private final BulkCloneVideosUseCase bulkCloneVideosUseCase;
 
     public VideoController(UploadVideoUseCase uploadVideoUseCase,
                            GetVideosUseCase getVideosUseCase,
@@ -35,7 +37,9 @@ public class VideoController {
                            DeleteVideoUseCase deleteVideoUseCase,
                            GetSharedVideosUseCase getSharedVideosUseCase,
                            BulkDeleteVideosUseCase bulkDeleteVideosUseCase,
-                           BulkUpdateTagsUseCase bulkUpdateTagsUseCase) {
+                           BulkUpdateTagsUseCase bulkUpdateTagsUseCase,
+                           CloneVideoUseCase cloneVideoUseCase,
+                           BulkCloneVideosUseCase bulkCloneVideosUseCase) {
         this.uploadVideoUseCase = uploadVideoUseCase;
         this.getVideosUseCase = getVideosUseCase;
         this.getVideoUseCase = getVideoUseCase;
@@ -44,6 +48,8 @@ public class VideoController {
         this.getSharedVideosUseCase = getSharedVideosUseCase;
         this.bulkDeleteVideosUseCase = bulkDeleteVideosUseCase;
         this.bulkUpdateTagsUseCase = bulkUpdateTagsUseCase;
+        this.cloneVideoUseCase = cloneVideoUseCase;
+        this.bulkCloneVideosUseCase = bulkCloneVideosUseCase;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -139,6 +145,29 @@ public class VideoController {
     ) {
         List<Video> updated = bulkUpdateTagsUseCase.execute(request.videoIds(), request.tags(), userEmail);
         List<VideoResponse> responses = updated.stream()
+                .map(v -> getVideoUseCase.execute(v.id(), userEmail))
+                .map(VideoResponse::fromDomain)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @PostMapping("/{id}/clone")
+    public ResponseEntity<VideoResponse> cloneVideo(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal String userEmail
+    ) {
+        Video cloned = cloneVideoUseCase.execute(id, userEmail);
+        VideoWithUrls withUrls = getVideoUseCase.execute(cloned.id(), userEmail);
+        return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
+    }
+
+    @PostMapping("/bulk-clone")
+    public ResponseEntity<List<VideoResponse>> bulkCloneVideos(
+            @RequestBody BulkCloneRequest request,
+            @AuthenticationPrincipal String userEmail
+    ) {
+        List<Video> cloned = bulkCloneVideosUseCase.execute(request.videoIds(), userEmail);
+        List<VideoResponse> responses = cloned.stream()
                 .map(v -> getVideoUseCase.execute(v.id(), userEmail))
                 .map(VideoResponse::fromDomain)
                 .toList();

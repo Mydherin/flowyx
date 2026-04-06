@@ -10,6 +10,8 @@ public interface VideoRepository {
     Video save(Video video);
     Optional<Video> findById(UUID id);
     List<Video> findByUserId(UUID userId, List<String> tags);
+    Optional<Video> findByUserIdAndVideoKey(UUID userId, String videoKey);
+    int countByVideoKey(String videoKey);
     Video update(Video video);
     void delete(UUID id);
 }

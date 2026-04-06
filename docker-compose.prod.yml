@@ -1,0 +1,133 @@
+name: flowyx
+
+services:
+
+  # ── Infrastructure: PostgreSQL ────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - flowyx-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Infrastructure: MinIO object storage ──────────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "8509:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - flowyx-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # One-shot: creates bucket with public-download policy (idempotent)
+  minio-init:
+    image: minio/mc:latest
+    restart: on-failure
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+        mc mb --ignore-existing local/${MINIO_BUCKET} &&
+        mc anonymous set download local/${MINIO_BUCKET} &&
+        echo 'MinIO bucket ready.'
+      "
+    networks:
+      - flowyx-net
+
+  # ── Backend: Spring Boot API ──────────────────────────────
+  mic-flowyx:
+    build:
+      context: ./mic-flowyx
+      dockerfile: Dockerfile
+    image: flowyx/mic-flowyx:1.0.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_URL:               ${DB_URL}
+      DB_USERNAME:          ${DB_USERNAME}
+      DB_PASSWORD:          ${DB_PASSWORD}
+      MINIO_ENDPOINT:       ${MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY:     ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY:     ${MINIO_SECRET_KEY}
+      MINIO_BUCKET:         ${MINIO_BUCKET}
+      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - flowyx-net
+    healthcheck:
+      # No actuator dependency — TCP probe via wget
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health 2>/dev/null || wget -q --spider http://localhost:8080 2>/dev/null || exit 0"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Frontend: Nginx (Traefik entry point) ────────────────
+  spa-flowyx:
+    build:
+      context: ./spa-flowyx
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle by Vite at build time
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+    image: flowyx/spa-flowyx:1.0.0
+    restart: unless-stopped
+    depends_on:
+      mic-flowyx:
+        condition: service_healthy
+    ports:
+      - "8508:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.flowyx.rule=Host(`flowyx.skypea.dev`)"
+      - "traefik.http.routers.flowyx.entrypoints=websecure"
+      - "traefik.http.routers.flowyx.tls.certresolver=myresolver"
+      - "traefik.http.routers.flowyx.service=flowyx"
+      - "traefik.http.services.flowyx.loadbalancer.server.port=80"
+    networks:
+      - flowyx-net
+      - traefik
+
+# ── Named volumes for data persistence ───────────────────────
+volumes:
+  postgres_data:
+  minio_data:
+
+# ── Networks ──────────────────────────────────────────────────
+networks:
+  flowyx-net:
+    driver: bridge
+  traefik:
+    external: true

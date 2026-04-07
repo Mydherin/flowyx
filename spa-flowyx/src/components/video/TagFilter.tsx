@@ -34,7 +34,7 @@ export function TagFilter({ tags, activeTags, onChange }: TagFilterProps) {
   const hasActive = activeTags.length > 0
 
   return (
-    <div ref={containerRef} className="relative mb-4">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -57,9 +57,9 @@ export function TagFilter({ tags, activeTags, onChange }: TagFilterProps) {
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 z-30 mb-1.5 w-72 bg-bg-secondary border border-border-default rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute bottom-full left-0 z-30 mb-1.5 w-72 bg-bg-secondary border border-border-default rounded-xl shadow-2xl flex flex-col max-h-[60dvh]">
           {/* Search + clear row */}
-          <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+          <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0">
             <div className="relative flex-1">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
@@ -83,7 +83,7 @@ export function TagFilter({ tags, activeTags, onChange }: TagFilterProps) {
           </div>
 
           {/* Tag grid */}
-          <div className="flex flex-wrap gap-1.5 px-3 pb-3 max-h-52 overflow-y-auto">
+          <div className="flex flex-wrap gap-1.5 px-3 pb-3 flex-1 min-h-0 overflow-y-auto scrollbar-dark">
             {filtered.length === 0 ? (
               <p className="text-text-muted text-xs py-2 w-full text-center">No tags found</p>
             ) : (

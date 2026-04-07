@@ -13,6 +13,7 @@ public interface VideoShareRepository {
     List<VideoShare> findByVideoId(UUID videoId);
     List<UUID> findVideoIdsBySharedWithUserId(UUID userId);
     List<VideoShare> findBySharedWithUserId(UUID userId);
+    List<VideoShare> findBySharedByUserId(UUID ownerId);
     boolean exists(UUID videoId, UUID sharedWithUserId);
     int countByVideoId(UUID videoId);
     void markViewed(UUID videoId, UUID viewerId);

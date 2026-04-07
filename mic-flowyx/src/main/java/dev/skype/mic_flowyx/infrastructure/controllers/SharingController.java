@@ -1,9 +1,11 @@
 package dev.skype.mic_flowyx.infrastructure.controllers;
 
+import dev.skype.mic_flowyx.application.usecases.sharing.GetShareRecipientsUseCase;
 import dev.skype.mic_flowyx.application.usecases.sharing.GetVideoSharesUseCase;
 import dev.skype.mic_flowyx.application.usecases.sharing.ShareVideosUseCase;
 import dev.skype.mic_flowyx.application.usecases.sharing.UnshareVideoUseCase;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.BulkShareRequest;
+import dev.skype.mic_flowyx.infrastructure.controllers.dto.ShareRecipientResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.ShareVideosRequest;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.VideoShareResponse;
 import org.springframework.http.ResponseEntity;
@@ -20,13 +22,27 @@ public class SharingController {
     private final ShareVideosUseCase shareVideosUseCase;
     private final UnshareVideoUseCase unshareVideoUseCase;
     private final GetVideoSharesUseCase getVideoSharesUseCase;
+    private final GetShareRecipientsUseCase getShareRecipientsUseCase;
 
     public SharingController(ShareVideosUseCase shareVideosUseCase,
                               UnshareVideoUseCase unshareVideoUseCase,
-                              GetVideoSharesUseCase getVideoSharesUseCase) {
+                              GetVideoSharesUseCase getVideoSharesUseCase,
+                              GetShareRecipientsUseCase getShareRecipientsUseCase) {
         this.shareVideosUseCase = shareVideosUseCase;
         this.unshareVideoUseCase = unshareVideoUseCase;
         this.getVideoSharesUseCase = getVideoSharesUseCase;
+        this.getShareRecipientsUseCase = getShareRecipientsUseCase;
+    }
+
+    @GetMapping("/shares/recipients")
+    public ResponseEntity<List<ShareRecipientResponse>> getShareRecipients(
+            @AuthenticationPrincipal String userEmail
+    ) {
+        List<ShareRecipientResponse> recipients = getShareRecipientsUseCase.execute(userEmail)
+                .stream()
+                .map(ShareRecipientResponse::fromDomain)
+                .toList();
+        return ResponseEntity.ok(recipients);
     }
 
     @GetMapping("/{id}/shares")

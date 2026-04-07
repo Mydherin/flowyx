@@ -54,6 +54,13 @@ public class JpaVideoShareRepository implements VideoShareRepository {
     }
 
     @Override
+    public List<VideoShare> findBySharedByUserId(UUID ownerId) {
+        return springDataRepo.findBySharedByUserId(ownerId).stream()
+                .map(VideoShareJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean exists(UUID videoId, UUID sharedWithUserId) {
         return springDataRepo.existsByVideoIdAndSharedWithUserId(videoId, sharedWithUserId);
     }

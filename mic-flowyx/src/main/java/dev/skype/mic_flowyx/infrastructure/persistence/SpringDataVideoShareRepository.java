@@ -18,6 +18,8 @@ interface SpringDataVideoShareRepository extends JpaRepository<VideoShareJpaEnti
 
     List<VideoShareJpaEntity> findBySharedWithUserId(UUID sharedWithUserId);
 
+    List<VideoShareJpaEntity> findBySharedByUserId(UUID sharedByUserId);
+
     boolean existsByVideoIdAndSharedWithUserId(UUID videoId, UUID sharedWithUserId);
 
     void deleteByVideoIdAndSharedWithUserId(UUID videoId, UUID sharedWithUserId);

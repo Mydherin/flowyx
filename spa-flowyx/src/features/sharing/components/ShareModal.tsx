@@ -8,7 +8,7 @@ import { UserSearchInput } from './UserSearchInput'
 
 interface ShareModalProps {
   videoIds: string[]
-  onClose: (result?: { shares: VideoShare[] }) => void
+  onClose: (result?: { videoId: string; shares: VideoShare[] }) => void
 }
 
 export function ShareModal({ videoIds, onClose }: ShareModalProps) {
@@ -20,14 +20,20 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
   const isBulk = videoIds.length > 1
 
   const loadShares = useCallback(async () => {
-    if (isBulk) {
-      setLoadingShares(false)
-      return
-    }
     setLoadingShares(true)
     try {
-      const data = await shareService.getShares(videoIds[0])
-      setShares(data)
+      if (isBulk) {
+        // Load shares for all videos in parallel then keep only the intersection
+        const allShares = await Promise.all(videoIds.map((id) => shareService.getShares(id)))
+        const first = allShares[0] ?? []
+        const common = first.filter((s) =>
+          allShares.every((list) => list.some((x) => x.userId === s.userId)),
+        )
+        setShares(common)
+      } else {
+        const data = await shareService.getShares(videoIds[0])
+        setShares(data)
+      }
     } catch {
       setError('Failed to load shares')
     } finally {
@@ -48,7 +54,6 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
       } else {
         await shareService.share(videoIds[0], [user.id])
       }
-      // Optimistically add to list so it's visible immediately
       const newShare: VideoShare = {
         userId: user.id,
         nickname: user.nickname,
@@ -73,7 +78,6 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
       } else {
         await shareService.unshare(videoIds[0], userId)
       }
-      // Optimistically remove from list
       setShares((prev) => prev.filter((s) => s.userId !== userId))
     } catch {
       setError('Failed to remove member')
@@ -82,12 +86,22 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
     }
   }
 
+  // For single-video mode the result carries back the final shares and the videoId
+  // so the caller never needs to read from a stale closure.
+  const handleClose = () => {
+    if (isBulk) {
+      onClose(undefined)
+    } else {
+      onClose({ videoId: videoIds[0], shares })
+    }
+  }
+
   const alreadySharedIds = new Set(shares.map((s) => s.userId))
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => onClose(isBulk ? undefined : { shares })} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       <div className="relative w-full sm:max-w-md bg-bg-secondary border-0 sm:border sm:border-border-default rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
@@ -99,7 +113,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
             )}
           </div>
           <button
-            onClick={() => onClose(isBulk ? undefined : { shares })}
+            onClick={handleClose}
             className="text-text-muted hover:text-white transition-colors p-1 rounded-md hover:bg-white/5"
           >
             <X size={16} />
@@ -124,7 +138,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
           )}
 
           <p className="text-text-muted text-xs font-medium mb-3 uppercase tracking-wider">
-            Shared with
+            {isBulk ? 'Shared with (all selected)' : 'Shared with'}
           </p>
 
           {loadingShares ? (
@@ -136,7 +150,9 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
                 <Users size={18} className="text-text-muted" />
               </div>
-              <p className="text-text-muted text-sm">Not shared with anyone yet</p>
+              <p className="text-text-muted text-sm">
+                {isBulk ? 'No users shared with all selected videos' : 'Not shared with anyone yet'}
+              </p>
             </div>
           ) : (
             <ul className="flex flex-col gap-0.5">
@@ -162,7 +178,6 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
                     <p className="text-text-primary text-sm font-medium truncate">{share.nickname}</p>
                     <p className="text-text-muted text-xs truncate">{share.email}</p>
                   </div>
-                  {/* Always visible remove button */}
                   <button
                     type="button"
                     onClick={() => void handleRemove(share.userId)}
@@ -184,7 +199,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
 
         {/* Footer */}
         <div className="px-6 py-4 shrink-0 border-t border-border-default">
-          <Button variant="ghost" size="md" onClick={() => onClose(isBulk ? undefined : { shares })} className="w-full">
+          <Button variant="ghost" size="md" onClick={handleClose} className="w-full">
             Done
           </Button>
         </div>

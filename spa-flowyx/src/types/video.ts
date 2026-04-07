@@ -25,3 +25,10 @@ export interface VideoShare {
   pictureUrl: string | null
   sharedAt: string
 }
+
+export interface ShareRecipient {
+  userId: string
+  nickname: string
+  pictureUrl: string | null
+  videoIds: string[]
+}

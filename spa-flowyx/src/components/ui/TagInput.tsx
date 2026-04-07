@@ -27,7 +27,7 @@ export function TagInput({ value, onChange, suggestions, placeholder = 'Add tags
   const removeTag = (tag: string) => onChange(value.filter((t) => t !== tag))
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
+    if ((e.key === 'Enter' || e.key === ',' || e.key === ' ') && input.trim()) {
       e.preventDefault()
       addTag(input)
     } else if (e.key === 'Backspace' && !input && value.length > 0) {
@@ -75,7 +75,7 @@ export function TagInput({ value, onChange, suggestions, placeholder = 'Add tags
       </div>
 
       {open && filtered.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-48 overflow-y-auto bg-bg-secondary border border-border-default rounded-lg shadow-2xl">
+        <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-32 overflow-y-auto bg-bg-secondary border border-border-default rounded-lg shadow-2xl">
           {filtered.map((s) => (
             <button
               key={s}
@@ -89,7 +89,7 @@ export function TagInput({ value, onChange, suggestions, placeholder = 'Add tags
         </div>
       )}
 
-      <p className="text-text-muted text-xs mt-1.5">Press Enter or comma to add a tag</p>
+      <p className="text-text-muted text-xs mt-1.5">Press Enter, comma, or space to add a tag</p>
     </div>
   )
 }

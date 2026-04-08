@@ -12,6 +12,8 @@ interface VideoGalleryCardProps {
 }
 
 const LONG_PRESS_MS = 500
+// Finger movement beyond this threshold (px) is treated as a scroll — cancels long-press.
+const SCROLL_THRESHOLD = 8
 
 export function VideoGalleryCard({
   video,
@@ -23,8 +25,18 @@ export function VideoGalleryCard({
 }: VideoGalleryCardProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const didLongPressRef = useRef(false)
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null)
 
-  const startPress = () => {
+  const cancelPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const handleMouseDown = () => {
+    // Long-press in select mode would re-trigger selection — we don't want that.
+    if (isSelectMode) return
     didLongPressRef.current = false
     timerRef.current = setTimeout(() => {
       didLongPressRef.current = true
@@ -32,8 +44,28 @@ export function VideoGalleryCard({
     }, LONG_PRESS_MS)
   }
 
-  const cancelPress = () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isSelectMode) return
+    const t = e.changedTouches[0]
+    touchStartPos.current = { x: t.clientX, y: t.clientY }
+    didLongPressRef.current = false
+    timerRef.current = setTimeout(() => {
+      didLongPressRef.current = true
+      onLongPress()
+    }, LONG_PRESS_MS)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current || !timerRef.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touchStartPos.current.x
+    const dy = t.clientY - touchStartPos.current.y
+    if (Math.sqrt(dx * dx + dy * dy) > SCROLL_THRESHOLD) cancelPress()
+  }
+
+  const handleTouchEnd = () => {
+    touchStartPos.current = null
+    cancelPress()
   }
 
   const handleClick = () => {
@@ -54,12 +86,13 @@ export function VideoGalleryCard({
         'transition-transform duration-100 active:scale-[0.97]',
         isSelected ? 'ring-2 ring-blue-500 ring-inset' : '',
       ].join(' ')}
-      onMouseDown={startPress}
+      onMouseDown={handleMouseDown}
       onMouseUp={cancelPress}
       onMouseLeave={cancelPress}
-      onTouchStart={startPress}
-      onTouchEnd={cancelPress}
-      onTouchCancel={cancelPress}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onClick={(e) => { e.stopPropagation(); handleClick() }}
     >
       {/* Thumbnail */}

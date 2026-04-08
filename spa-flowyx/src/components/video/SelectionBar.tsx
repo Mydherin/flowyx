@@ -2,6 +2,9 @@ import { Tag, Trash2, Share2, Download, FolderDown } from 'lucide-react'
 
 interface SelectionBarProps {
   count: number
+  totalCount: number
+  onSelectAll: () => void
+  onDeselectAll: () => void
   onEditTags?: () => void
   onShare?: () => void
   onDelete?: () => void
@@ -9,86 +12,97 @@ interface SelectionBarProps {
   onDownload?: () => void
 }
 
-export function SelectionBar({ count, onEditTags, onShare, onDelete, onAddToMine, onDownload }: SelectionBarProps) {
+export function SelectionBar({
+  count,
+  totalCount,
+  onSelectAll,
+  onDeselectAll,
+  onEditTags,
+  onShare,
+  onDelete,
+  onAddToMine,
+  onDownload,
+}: SelectionBarProps) {
+  const allSelected = count === totalCount && totalCount > 0
+
   return (
     // stopPropagation prevents document-level click listener from dismissing select mode
     <div
-      className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-4 py-3 bg-bg-secondary/95 backdrop-blur-md border-t border-border-default"
+      className="fixed bottom-0 inset-x-0 z-40 bg-bg-secondary/95 backdrop-blur-md border-t border-border-default"
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="text-text-secondary text-sm font-medium shrink-0">
-        {count} selected
-      </span>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        {/* Left: count */}
+        <span className="text-sm font-semibold text-white shrink-0 min-w-[4rem]">
+          {count}
+          <span className="text-text-muted font-normal"> selected</span>
+        </span>
 
-      <div className="flex items-center gap-1">
-        {onEditTags && (
-          <button
-            type="button"
-            onClick={onEditTags}
-            disabled={count === 0}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Edit tags"
-          >
-            <Tag size={18} />
-            <span className="text-[10px]">Tags</span>
-          </button>
-        )}
+        {/* Center: icon-only action buttons. Destructive (delete) placed last. */}
+        <div className="flex items-center gap-1">
+          {onEditTags && (
+            <ActionButton onClick={onEditTags} disabled={count === 0} title="Edit tags">
+              <Tag size={20} />
+            </ActionButton>
+          )}
+          {onShare && (
+            <ActionButton onClick={onShare} disabled={count === 0} title="Share">
+              <Share2 size={20} />
+            </ActionButton>
+          )}
+          {onAddToMine && (
+            <ActionButton onClick={onAddToMine} disabled={count === 0} title="Add to my videos">
+              <FolderDown size={20} />
+            </ActionButton>
+          )}
+          {onDownload && (
+            <ActionButton onClick={onDownload} disabled={count === 0} title="Download">
+              <Download size={20} />
+            </ActionButton>
+          )}
+          {onDelete && (
+            <ActionButton onClick={onDelete} disabled={count === 0} title="Delete" destructive>
+              <Trash2 size={20} />
+            </ActionButton>
+          )}
+        </div>
 
-        {onShare && (
-          <button
-            type="button"
-            onClick={onShare}
-            disabled={count === 0}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Share"
-          >
-            <Share2 size={18} />
-            <span className="text-[10px]">Share</span>
-          </button>
-        )}
-
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={count === 0}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Delete"
-          >
-            <Trash2 size={18} />
-            <span className="text-[10px]">Delete</span>
-          </button>
-        )}
-
-        {onAddToMine && (
-          <button
-            type="button"
-            onClick={onAddToMine}
-            disabled={count === 0}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Add to my videos"
-          >
-            <Download size={18} />
-            <span className="text-[10px]">Add to mine</span>
-          </button>
-        )}
-
-        {onDownload && (
-          <button
-            type="button"
-            onClick={onDownload}
-            disabled={count === 0}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Download"
-          >
-            <FolderDown size={18} />
-            <span className="text-[10px]">Download</span>
-          </button>
-        )}
+        {/* Right: select all toggle */}
+        <button
+          type="button"
+          onClick={allSelected ? onDeselectAll : onSelectAll}
+          className="text-xs font-medium text-text-muted hover:text-white transition-colors shrink-0 min-w-[4rem] text-right"
+        >
+          {allSelected ? 'Deselect all' : 'Select all'}
+        </button>
       </div>
-
-      {/* Spacer to balance the left count text */}
-      <div className="w-20 shrink-0" />
     </div>
+  )
+}
+
+interface ActionButtonProps {
+  onClick: () => void
+  disabled: boolean
+  title: string
+  destructive?: boolean
+  children: React.ReactNode
+}
+
+function ActionButton({ onClick, disabled, title, destructive = false, children }: ActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={[
+        'p-2.5 rounded-xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed',
+        destructive
+          ? 'text-text-muted hover:text-red-400 hover:bg-red-950/30 active:bg-red-950/50'
+          : 'text-text-muted hover:text-white hover:bg-white/10 active:bg-white/15',
+      ].join(' ')}
+    >
+      {children}
+    </button>
   )
 }

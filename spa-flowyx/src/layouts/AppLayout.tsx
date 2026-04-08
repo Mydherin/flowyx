@@ -34,7 +34,7 @@ export function AppLayout() {
           </Button>
         </div>
       </header>
-      <main className="flex-1 p-4 sm:p-6">
+      <main className="p-4 sm:p-6 pb-0 sm:pb-0">
         <Outlet />
       </main>
     </div>

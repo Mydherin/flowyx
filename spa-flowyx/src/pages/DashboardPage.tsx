@@ -169,6 +169,13 @@ export function DashboardPage() {
     })
   }, [])
 
+  const selectAll = useCallback(() => {
+    const vids = activeTab === 'mine' ? visibleVideos : visibleSharedVideos
+    setSelectedIds(new Set(vids.map((v) => v.id)))
+  }, [activeTab, visibleVideos, visibleSharedVideos])
+
+  const deselectAll = useCallback(() => setSelectedIds(new Set()), [])
+
   const anyModalOpen = showBulkTagEdit || showShareModal || showUpload || !!editingVideo || playerIndex !== null
   useEffect(() => {
     if (!isSelectMode || anyModalOpen) return
@@ -406,6 +413,9 @@ export function DashboardPage() {
       {isSelectMode && (
         <SelectionBar
           count={selectedCount}
+          totalCount={activeTab === 'mine' ? visibleVideos.length : visibleSharedVideos.length}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
           onEditTags={activeTab === 'mine' ? () => setShowBulkTagEdit(true) : undefined}
           onShare={activeTab === 'mine' ? () => setShowShareModal(true) : undefined}
           onDelete={activeTab === 'mine' ? () => void handleBulkDelete() : undefined}
@@ -441,7 +451,6 @@ export function DashboardPage() {
           onSuccess={(updated) => {
             updated.forEach((v) => patchVideo(v.id, { tags: v.tags }))
             setShowBulkTagEdit(false)
-            exitSelectMode()
           }}
         />
       )}
@@ -451,7 +460,6 @@ export function DashboardPage() {
           videoIds={selectedIdsArray}
           onClose={(result) => {
             setShowShareModal(false)
-            exitSelectMode()
             if (result) {
               patchVideo(result.videoId, { sharedWithCount: result.shares.length })
               reconcileShareRecipients(result.videoId, result.shares)
@@ -464,8 +472,11 @@ export function DashboardPage() {
         />
       )}
 
-      {/* Bottom padding so content isn't hidden behind SelectionBar */}
-      {isSelectMode && <div className="h-20" />}
+      {/* Bottom clearance: prevents the last video row from hiding behind the fixed
+          SelectionBar. The bar height is ~56 px (py-3 + icon row); 72 px gives
+          comfortable breathing room. Without select mode keep it at zero — the
+          AppLayout's padding-bottom already provides the right small gap. */}
+      <div className={isSelectMode ? 'h-18' : ''} />
     </div>
   )
 }

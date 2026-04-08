@@ -15,6 +15,7 @@ import { SharerSelect } from '../components/video/SharerSelect'
 import { Button } from '../components/ui/Button'
 import { useVideoStore } from '../stores/useVideoStore'
 import { useSharedVideoStore } from '../stores/useSharedVideoStore'
+import { useSelectModeExitOnClickout } from '../hooks/useSelectModeExitOnClickout'
 
 type Tab = 'mine' | 'shared'
 
@@ -177,11 +178,7 @@ export function DashboardPage() {
   const deselectAll = useCallback(() => setSelectedIds(new Set()), [])
 
   const anyModalOpen = showBulkTagEdit || showShareModal || showUpload || !!editingVideo || playerIndex !== null
-  useEffect(() => {
-    if (!isSelectMode || anyModalOpen) return
-    document.addEventListener('click', exitSelectMode)
-    return () => document.removeEventListener('click', exitSelectMode)
-  }, [isSelectMode, anyModalOpen, exitSelectMode])
+  useSelectModeExitOnClickout(isSelectMode && !anyModalOpen, exitSelectMode)
 
   // ─── Bulk download ────────────────────────────────────────────────────────────
   const handleBulkDownload = async () => {

@@ -12,7 +12,6 @@ interface VideoGalleryCardProps {
 }
 
 const LONG_PRESS_MS = 500
-// Finger movement beyond this threshold (px) is treated as a scroll — cancels long-press.
 const SCROLL_THRESHOLD = 8
 
 export function VideoGalleryCard({
@@ -24,52 +23,93 @@ export function VideoGalleryCard({
   onToggleSelect,
 }: VideoGalleryCardProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const didLongPressRef = useRef(false)
+  // Set to true when the long-press timer fires — prevents the subsequent
+  // touchend or click from being treated as a tap.
+  const isLongPressRef = useRef(false)
+  // Set to true when touchend handles the tap — prevents the synthetic
+  // click event (synthesized by iOS/Android after touch) from double-firing.
+  const touchHandledRef = useRef(false)
+  // Set to true when the touch moved beyond SCROLL_THRESHOLD — prevents
+  // touchend from firing a tap action at the end of a scroll gesture.
+  const didScrollRef = useRef(false)
   const touchStartPos = useRef<{ x: number; y: number } | null>(null)
 
-  const cancelPress = () => {
-    if (timerRef.current) {
+  const clearTimer = () => {
+    if (timerRef.current !== null) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
   }
 
-  const handleMouseDown = () => {
-    // Long-press in select mode would re-trigger selection — we don't want that.
-    if (isSelectMode) return
-    didLongPressRef.current = false
-    timerRef.current = setTimeout(() => {
-      didLongPressRef.current = true
-      onLongPress()
-    }, LONG_PRESS_MS)
-  }
+  // ── Touch ──────────────────────────────────────────────────────────────────
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isSelectMode) return
+    // Reset per-interaction flags on every new touch
+    isLongPressRef.current = false
+    touchHandledRef.current = false
+    didScrollRef.current = false
+
+    // Always track start position so handleTouchMove can detect scroll in any mode
     const t = e.changedTouches[0]
     touchStartPos.current = { x: t.clientX, y: t.clientY }
-    didLongPressRef.current = false
+
+    if (isSelectMode) return // no long-press detection needed in select mode
+
     timerRef.current = setTimeout(() => {
-      didLongPressRef.current = true
+      isLongPressRef.current = true
       onLongPress()
     }, LONG_PRESS_MS)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPos.current || !timerRef.current) return
+    if (!touchStartPos.current) return
     const t = e.changedTouches[0]
     const dx = t.clientX - touchStartPos.current.x
     const dy = t.clientY - touchStartPos.current.y
-    if (Math.sqrt(dx * dx + dy * dy) > SCROLL_THRESHOLD) cancelPress()
+    if (Math.sqrt(dx * dx + dy * dy) > SCROLL_THRESHOLD) {
+      clearTimer()
+      didScrollRef.current = true
+    }
   }
 
   const handleTouchEnd = () => {
     touchStartPos.current = null
-    cancelPress()
+    clearTimer()
+
+    // Skip if this touch became a long-press or a scroll gesture
+    if (isLongPressRef.current || didScrollRef.current) return
+
+    // Act on the tap here directly, before the browser synthesizes a click event.
+    // Mark as handled so the synthetic click (see handleClick) is a no-op.
+    touchHandledRef.current = true
+    if (isSelectMode) {
+      onToggleSelect()
+    } else {
+      onTap()
+    }
   }
 
+  // ── Mouse (desktop only) ──────────────────────────────────────────────────
+
+  const handleMouseDown = () => {
+    if (isSelectMode) return // in select mode, click handles the toggle
+    timerRef.current = setTimeout(() => {
+      isLongPressRef.current = true
+      onLongPress()
+    }, LONG_PRESS_MS)
+  }
+
+  // onClick fires for mouse clicks and for the synthetic click after touch.
+  // Touch taps are already handled in touchEnd — skip them here.
   const handleClick = () => {
-    if (didLongPressRef.current) return
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false
+      return
+    }
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false
+      return
+    }
     if (isSelectMode) {
       onToggleSelect()
     } else {
@@ -86,9 +126,11 @@ export function VideoGalleryCard({
         'transition-transform duration-100 active:scale-[0.97]',
         isSelected ? 'ring-2 ring-blue-500 ring-inset' : '',
       ].join(' ')}
+      data-keep-select="true"
+      onContextMenu={(e) => e.preventDefault()}
       onMouseDown={handleMouseDown}
-      onMouseUp={cancelPress}
-      onMouseLeave={cancelPress}
+      onMouseUp={clearTimer}
+      onMouseLeave={clearTimer}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -102,6 +144,8 @@ export function VideoGalleryCard({
           alt={video.description || 'Video'}
           className="w-full h-full object-cover"
           draggable={false}
+          // Prevent iOS long-press image callout (Save Image / Open in Browser)
+          style={{ WebkitTouchCallout: 'none' } as React.CSSProperties}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">

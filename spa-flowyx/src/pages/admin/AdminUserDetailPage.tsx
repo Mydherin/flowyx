@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSelectModeExitOnClickout } from '../../hooks/useSelectModeExitOnClickout'
 import { useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { adminService, type AdminUser } from '../../services/adminService'
@@ -83,10 +84,13 @@ export function AdminUserDetailPage() {
     return result
   }, [videos, activeTags, activeRecipientIds, recipients])
 
-  const exitSelectMode = () => {
+  const exitSelectMode = useCallback(() => {
     setIsSelectMode(false)
     setSelectedIds(new Set())
-  }
+  }, [])
+
+  const anyModalOpen = showPickUser || playerIndex !== null
+  useSelectModeExitOnClickout(isSelectMode && !anyModalOpen, exitSelectMode)
 
   const handleTap = (video: Video) => {
     if (isSelectMode) {
@@ -142,9 +146,9 @@ export function AdminUserDetailPage() {
   }
 
   return (
-    <div className="min-h-full" onClick={isSelectMode ? exitSelectMode : undefined}>
+    <div className="min-h-full">
       {/* Page header */}
-      <div className="flex items-start gap-3 mb-6" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-start gap-3 mb-6">
         <button
           type="button"
           onClick={() => void navigate('/admin')}
@@ -177,10 +181,7 @@ export function AdminUserDetailPage() {
 
       {/* Filters — tag filter + shared-with filter, same as "My Videos" tab */}
       {(allTags.length > 0 || recipients.length > 0) && (
-        <div
-          className="flex items-center gap-2 mb-4 flex-wrap"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           {allTags.length > 0 && (
             <TagFilter tags={allTags} activeTags={activeTags} onChange={setActiveTags} />
           )}

@@ -28,8 +28,8 @@ export function SelectionBar({
   const allSelected = count === totalCount && totalCount > 0
 
   return (
-    // stopPropagation prevents document-level click listener from dismissing select mode
     <div
+      data-keep-select="true"
       className="fixed bottom-0 inset-x-0 z-40 bg-bg-secondary/95 backdrop-blur-md border-t border-border-default"
       onClick={(e) => e.stopPropagation()}
     >

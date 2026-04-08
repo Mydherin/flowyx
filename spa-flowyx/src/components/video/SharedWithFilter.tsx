@@ -58,9 +58,9 @@ export function SharedWithFilter({ recipients, activeIds, onChange }: SharedWith
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 z-30 mb-1.5 w-64 bg-bg-secondary border border-border-default rounded-xl shadow-2xl flex flex-col max-h-[60dvh]">
+        <div className="absolute bottom-full left-0 z-30 mb-1.5 w-64 bg-bg-secondary border border-border-default rounded-xl shadow-2xl overflow-hidden">
           {/* Search + clear row */}
-          <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0">
+          <div className="flex items-center gap-2 px-3 pt-3 pb-2">
             <div className="relative flex-1">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
@@ -84,7 +84,7 @@ export function SharedWithFilter({ recipients, activeIds, onChange }: SharedWith
           </div>
 
           {/* User list */}
-          <ul className="flex-1 min-h-0 overflow-y-auto pb-2 scrollbar-dark">
+          <ul className="overflow-y-auto max-h-[100px] pb-2 scrollbar-dark">
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-xs text-text-muted text-center">No results</li>
             ) : (

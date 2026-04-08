@@ -1,6 +1,8 @@
 package dev.skype.mic_flowyx.infrastructure.persistence;
 
+import dev.skype.mic_flowyx.domain.entities.Role;
 import dev.skype.mic_flowyx.domain.entities.User;
+import dev.skype.mic_flowyx.domain.exceptions.UserNotFoundException;
 import dev.skype.mic_flowyx.domain.repositories.UserRepository;
 import org.springframework.stereotype.Repository;
 
@@ -40,7 +42,22 @@ public class JpaUserRepository implements UserRepository {
     }
 
     @Override
+    public List<User> findAll() {
+        return springDataRepo.findAll().stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public User update(User user) {
         return springDataRepo.save(UserJpaEntity.fromDomain(user)).toDomain();
+    }
+
+    @Override
+    public User updateRole(UUID id, Role role) {
+        User user = findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id.toString()));
+        springDataRepo.updateRoleById(id, role);
+        return new User(user.id(), user.nickname(), user.email(), user.pictureUrl(), role, user.createdAt());
     }
 }

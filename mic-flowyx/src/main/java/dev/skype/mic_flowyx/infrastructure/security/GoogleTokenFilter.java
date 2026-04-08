@@ -1,5 +1,6 @@
 package dev.skype.mic_flowyx.infrastructure.security;
 
+import dev.skype.mic_flowyx.domain.repositories.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,12 +24,15 @@ public class GoogleTokenFilter extends OncePerRequestFilter {
 
     private final RestClient googleRestClient;
     private final String googleClientId;
+    private final UserRepository userRepository;
 
     public GoogleTokenFilter(
             @Qualifier("googleRestClient") RestClient googleRestClient,
-            @Value("${google.oauth2.client-id}") String googleClientId) {
+            @Value("${google.oauth2.client-id}") String googleClientId,
+            UserRepository userRepository) {
         this.googleRestClient = googleRestClient;
         this.googleClientId = googleClientId;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -60,10 +64,14 @@ public class GoogleTokenFilter extends OncePerRequestFilter {
                 return;
             }
 
+            String roleName = userRepository.findByEmail(info.email())
+                    .map(user -> "ROLE_" + user.role().name())
+                    .orElse("ROLE_USER");
+
             var auth = new UsernamePasswordAuthenticationToken(
                     info.email(),
                     null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                    List.of(new SimpleGrantedAuthority(roleName))
             );
             SecurityContextHolder.getContext().setAuthentication(auth);
             filterChain.doFilter(request, response);

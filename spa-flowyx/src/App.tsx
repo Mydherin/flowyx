@@ -25,7 +25,7 @@ export default function App() {
     if (!hasHydrated || !user) return
 
     setIsValidating(true)
-    callBackend<{ nickname: string; email: string; pictureUrl: string }>(
+    callBackend<{ nickname: string; email: string; pictureUrl: string; role: string }>(
       '/api/v1/auth/signin',
       user.accessToken,
       { picture: user.picture },
@@ -36,6 +36,7 @@ export default function App() {
           name: backendUser.nickname,
           email: backendUser.email,
           picture: backendUser.pictureUrl,
+          role: backendUser.role,
         })
       })
       .catch(() => logout())

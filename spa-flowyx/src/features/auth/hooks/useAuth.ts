@@ -100,6 +100,7 @@ export function useAuth() {
           email: backendUser.email,
           name: backendUser.nickname,
           picture: backendUser.pictureUrl,
+          role: backendUser.role,
         })
       } catch (err) {
         if (err instanceof Error && err.message === 'SESSION_EXPIRED') return
@@ -121,6 +122,7 @@ export function useAuth() {
     isLoading,
     error,
     isAuthenticated: user !== null,
+    isAdmin: user?.role === 'ADMIN',
     signIn,
     logout,
   }

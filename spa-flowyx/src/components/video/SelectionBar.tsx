@@ -1,4 +1,4 @@
-import { Tag, Trash2, Share2, Download, FolderDown } from 'lucide-react'
+import { Tag, Trash2, Share2, Download, FolderDown, UserPlus } from 'lucide-react'
 
 interface SelectionBarProps {
   count: number
@@ -10,6 +10,7 @@ interface SelectionBarProps {
   onDelete?: () => void
   onAddToMine?: () => void
   onDownload?: () => void
+  onAssignToUser?: () => void
 }
 
 export function SelectionBar({
@@ -22,6 +23,7 @@ export function SelectionBar({
   onDelete,
   onAddToMine,
   onDownload,
+  onAssignToUser,
 }: SelectionBarProps) {
   const allSelected = count === totalCount && totalCount > 0
 
@@ -58,6 +60,11 @@ export function SelectionBar({
           {onDownload && (
             <ActionButton onClick={onDownload} disabled={count === 0} title="Download">
               <Download size={20} />
+            </ActionButton>
+          )}
+          {onAssignToUser && (
+            <ActionButton onClick={onAssignToUser} disabled={count === 0} title="Assign to user">
+              <UserPlus size={20} />
             </ActionButton>
           )}
           {onDelete && (

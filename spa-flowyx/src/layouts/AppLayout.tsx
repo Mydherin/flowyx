@@ -1,21 +1,26 @@
-import { Outlet } from 'react-router'
-import { LogOut, LayoutDashboard } from 'lucide-react'
+import { Link, Outlet } from 'react-router'
+import { LogOut, LayoutDashboard, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { Button } from '../components/ui/Button'
 
 export function AppLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
 
   return (
     <div className="min-h-dvh bg-bg-primary flex flex-col">
       <header className="h-14 border-b border-border-subtle flex items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <LayoutDashboard size={18} className="text-white" />
           <span className="font-semibold text-text-primary text-sm tracking-tight">
             Flowyx
           </span>
-        </div>
+        </Link>
         <div className="flex items-center gap-2 sm:gap-3">
+          {isAdmin && (
+            <Link to="/admin" title="Admin panel" className="flex items-center">
+              <ShieldCheck size={18} className="text-amber-400 hover:text-amber-300 transition-colors" />
+            </Link>
+          )}
           {user && (
             <>
               <img

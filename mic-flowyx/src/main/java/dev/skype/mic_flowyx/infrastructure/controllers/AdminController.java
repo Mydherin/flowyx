@@ -8,7 +8,6 @@ import dev.skype.mic_flowyx.domain.entities.Video;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.AdminUserResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.ShareRecipientResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.UpdateRoleRequest;
-import dev.skype.mic_flowyx.infrastructure.controllers.dto.UpdateVideoRequest;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.VideoResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -30,7 +29,6 @@ public class AdminController {
     private final UpdateUserRoleUseCase updateUserRoleUseCase;
     private final GetUserVideosAdminUseCase getUserVideosAdminUseCase;
     private final AssignVideoToUserUseCase assignVideoToUserUseCase;
-    private final UpdateVideoAdminUseCase updateVideoAdminUseCase;
     private final GetShareRecipientsAdminUseCase getShareRecipientsAdminUseCase;
     private final StoragePort storagePort;
 
@@ -38,14 +36,12 @@ public class AdminController {
                            UpdateUserRoleUseCase updateUserRoleUseCase,
                            GetUserVideosAdminUseCase getUserVideosAdminUseCase,
                            AssignVideoToUserUseCase assignVideoToUserUseCase,
-                           UpdateVideoAdminUseCase updateVideoAdminUseCase,
                            GetShareRecipientsAdminUseCase getShareRecipientsAdminUseCase,
                            StoragePort storagePort) {
         this.getAllUsersUseCase = getAllUsersUseCase;
         this.updateUserRoleUseCase = updateUserRoleUseCase;
         this.getUserVideosAdminUseCase = getUserVideosAdminUseCase;
         this.assignVideoToUserUseCase = assignVideoToUserUseCase;
-        this.updateVideoAdminUseCase = updateVideoAdminUseCase;
         this.getShareRecipientsAdminUseCase = getShareRecipientsAdminUseCase;
         this.storagePort = storagePort;
     }
@@ -94,21 +90,6 @@ public class AdminController {
                 .map(ShareRecipientResponse::fromDomain)
                 .toList();
         return ResponseEntity.ok(recipients);
-    }
-
-    @PutMapping("/videos/{videoId}")
-    public ResponseEntity<VideoResponse> updateVideo(
-            @PathVariable UUID videoId,
-            @RequestBody UpdateVideoRequest request) {
-        Video updated = updateVideoAdminUseCase.execute(videoId, request.description(), request.tags());
-        VideoWithUrls withUrls = new VideoWithUrls(
-                updated,
-                storagePort.getObjectUrl(updated.videoKey()),
-                updated.thumbnailKey() != null ? storagePort.getObjectUrl(updated.thumbnailKey()) : null,
-                0,
-                true
-        );
-        return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
     }
 
     @PostMapping("/users/{targetUserId}/videos/{videoId}/assign")

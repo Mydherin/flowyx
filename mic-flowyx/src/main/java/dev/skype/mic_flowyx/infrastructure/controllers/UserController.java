@@ -1,8 +1,6 @@
 package dev.skype.mic_flowyx.infrastructure.controllers;
 
-import dev.skype.mic_flowyx.application.usecases.user.GetCurrentUserUseCase;
 import dev.skype.mic_flowyx.application.usecases.user.SearchUsersUseCase;
-import dev.skype.mic_flowyx.infrastructure.controllers.dto.SignUpResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.UserSearchResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,17 +16,9 @@ import java.util.List;
 public class UserController {
 
     private final SearchUsersUseCase searchUsersUseCase;
-    private final GetCurrentUserUseCase getCurrentUserUseCase;
 
-    public UserController(SearchUsersUseCase searchUsersUseCase,
-                          GetCurrentUserUseCase getCurrentUserUseCase) {
+    public UserController(SearchUsersUseCase searchUsersUseCase) {
         this.searchUsersUseCase = searchUsersUseCase;
-        this.getCurrentUserUseCase = getCurrentUserUseCase;
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<SignUpResponse> getMe(@AuthenticationPrincipal String userEmail) {
-        return ResponseEntity.ok(SignUpResponse.fromDomain(getCurrentUserUseCase.execute(userEmail)));
     }
 
     @GetMapping("/search")

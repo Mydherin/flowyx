@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Loader2, Check } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { adminService } from '../../services/adminService'
 import type { UserSearchResult } from '../../types/sharing'
 import { Button } from '../ui/Button'
@@ -8,43 +8,46 @@ import { UserSearchInput } from '../../features/sharing/components/UserSearchInp
 interface AdminPickUserModalProps {
   /** Snapshot of selected video IDs captured at the time the modal was opened */
   videoIds: string[]
-  /** The user whose page we're on — excluded from results via alreadySharedIds */
+  /** The user whose page we're on — excluded from results (avoid copying back to source) */
   sourceUserId: string
   onClose: () => void
 }
 
-interface AssignedEntry {
-  user: UserSearchResult
-  status: 'loading' | 'done' | 'error'
-}
+export function AdminPickUserModal({
+  videoIds,
+  sourceUserId,
+  onClose,
+}: AdminPickUserModalProps) {
+  const [pending, setPending] = useState<UserSearchResult[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-export function AdminPickUserModal({ videoIds, sourceUserId, onClose }: AdminPickUserModalProps) {
-  const [assigned, setAssigned] = useState<AssignedEntry[]>([])
-  const [assigningId, setAssigningId] = useState<string | null>(null)
+  const pendingIds = new Set(pending.map((u) => u.id))
+  const excludeIds = new Set([...pendingIds, sourceUserId])
 
-  const assignedIds = new Set(assigned.map((e) => e.user.id))
-  // Exclude both already-assigned users and the source user from search results
-  const excludeIds = new Set([...assignedIds, sourceUserId])
+  const handleAdd = (user: UserSearchResult) => {
+    if (pendingIds.has(user.id)) return
+    setPending((prev) => [...prev, user])
+  }
 
-  const handleAdd = async (user: UserSearchResult) => {
-    if (assigningId || assignedIds.has(user.id)) return
+  const handleRemove = (id: string) => {
+    setPending((prev) => prev.filter((u) => u.id !== id))
+  }
 
-    setAssigningId(user.id)
-    setAssigned((prev) => [...prev, { user, status: 'loading' }])
-
+  const handleCopy = async () => {
+    if (pending.length === 0 || isSubmitting) return
+    setIsSubmitting(true)
+    setError(null)
     try {
       await Promise.all(
-        videoIds.map((videoId) => adminService.assignVideoToUser(user.id, videoId)),
+        pending.flatMap((user) =>
+          videoIds.map((videoId) => adminService.assignVideoToUser(user.id, videoId)),
+        ),
       )
-      setAssigned((prev) =>
-        prev.map((e) => (e.user.id === user.id ? { ...e, status: 'done' } : e)),
-      )
+      onClose()
     } catch {
-      setAssigned((prev) =>
-        prev.map((e) => (e.user.id === user.id ? { ...e, status: 'error' } : e)),
-      )
-    } finally {
-      setAssigningId(null)
+      setError('Some assignments failed. Please try again.')
+      setIsSubmitting(false)
     }
   }
 
@@ -59,7 +62,7 @@ export function AdminPickUserModal({ videoIds, sourceUserId, onClose }: AdminPic
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           <div>
-            <h2 className="text-text-primary font-semibold text-base">Assign to users</h2>
+            <h2 className="text-text-primary font-semibold text-base">Copy to users</h2>
             <p className="text-text-muted text-xs mt-0.5">
               {videoIds.length} video{videoIds.length !== 1 ? 's' : ''} will be added to their
               collection
@@ -77,56 +80,46 @@ export function AdminPickUserModal({ videoIds, sourceUserId, onClose }: AdminPic
         <div className="px-6 pb-4 shrink-0">
           <UserSearchInput
             alreadySharedIds={excludeIds}
-            addingId={assigningId}
-            onSelect={(u) => void handleAdd(u)}
+            addingId={null}
+            onSelect={handleAdd}
+            onSearch={adminService.searchUsers}
           />
         </div>
 
-        {/* Assigned list */}
-        {assigned.length > 0 && (
+        {/* Pending list */}
+        {pending.length > 0 && (
           <div className="flex-1 overflow-y-auto px-6 pb-4 min-h-0">
             <p className="text-text-muted text-xs font-medium mb-3 uppercase tracking-wider">
-              Assigned to
+              Selected
             </p>
             <ul className="flex flex-col gap-0.5">
-              {assigned.map((entry) => (
-                <li
-                  key={entry.user.id}
-                  className="flex items-center gap-3 py-2 px-2 rounded-lg"
-                >
-                  {entry.user.pictureUrl ? (
+              {pending.map((user) => (
+                <li key={user.id} className="flex items-center gap-3 py-2 px-2 rounded-lg">
+                  {user.pictureUrl ? (
                     <img
-                      src={entry.user.pictureUrl}
-                      alt={entry.user.nickname}
+                      src={user.pictureUrl}
+                      alt={user.nickname}
                       className="w-8 h-8 rounded-full object-cover shrink-0"
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                       <span className="text-xs text-text-muted font-medium">
-                        {entry.user.nickname[0]?.toUpperCase()}
+                        {user.nickname[0]?.toUpperCase()}
                       </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-sm font-medium truncate">
-                      {entry.user.nickname}
-                    </p>
-                    <p className="text-text-muted text-xs truncate">{entry.user.email}</p>
+                    <p className="text-text-primary text-sm font-medium truncate">{user.nickname}</p>
+                    <p className="text-text-muted text-xs truncate">{user.email}</p>
                   </div>
-                  <div className="shrink-0">
-                    {entry.status === 'loading' && (
-                      <Loader2 size={14} className="animate-spin text-text-muted" />
-                    )}
-                    {entry.status === 'done' && (
-                      <div className="flex items-center gap-1 text-green-400 text-xs">
-                        <Check size={13} />
-                        Done
-                      </div>
-                    )}
-                    {entry.status === 'error' && (
-                      <span className="text-red-400 text-xs">Failed</span>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(user.id)}
+                    disabled={isSubmitting}
+                    className="shrink-0 text-text-muted hover:text-white transition-colors p-1 rounded disabled:opacity-30"
+                  >
+                    <X size={14} />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -134,10 +127,29 @@ export function AdminPickUserModal({ videoIds, sourceUserId, onClose }: AdminPic
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 shrink-0 border-t border-border-default">
-          <Button variant="ghost" size="md" onClick={onClose} className="w-full">
-            Done
+        <div className="px-6 py-4 shrink-0 border-t border-border-default flex flex-col gap-2">
+          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => void handleCopy()}
+            disabled={pending.length === 0 || isSubmitting}
+            className="w-full"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Copying…
+              </span>
+            ) : (
+              `Copy to ${pending.length} user${pending.length !== 1 ? 's' : ''}`
+            )}
           </Button>
+          {!isSubmitting && (
+            <Button variant="ghost" size="md" onClick={onClose} className="w-full">
+              Cancel
+            </Button>
+          )}
         </div>
       </div>
     </div>

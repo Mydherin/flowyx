@@ -8,6 +8,7 @@ import dev.skype.mic_flowyx.domain.entities.Video;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.AdminUserResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.ShareRecipientResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.UpdateRoleRequest;
+import dev.skype.mic_flowyx.infrastructure.controllers.dto.UserSearchResponse;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.VideoResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ public class AdminController {
     private final GetUserVideosAdminUseCase getUserVideosAdminUseCase;
     private final AssignVideoToUserUseCase assignVideoToUserUseCase;
     private final GetShareRecipientsAdminUseCase getShareRecipientsAdminUseCase;
+    private final SearchUsersAdminUseCase searchUsersAdminUseCase;
     private final StoragePort storagePort;
 
     public AdminController(GetAllUsersUseCase getAllUsersUseCase,
@@ -37,12 +39,14 @@ public class AdminController {
                            GetUserVideosAdminUseCase getUserVideosAdminUseCase,
                            AssignVideoToUserUseCase assignVideoToUserUseCase,
                            GetShareRecipientsAdminUseCase getShareRecipientsAdminUseCase,
+                           SearchUsersAdminUseCase searchUsersAdminUseCase,
                            StoragePort storagePort) {
         this.getAllUsersUseCase = getAllUsersUseCase;
         this.updateUserRoleUseCase = updateUserRoleUseCase;
         this.getUserVideosAdminUseCase = getUserVideosAdminUseCase;
         this.assignVideoToUserUseCase = assignVideoToUserUseCase;
         this.getShareRecipientsAdminUseCase = getShareRecipientsAdminUseCase;
+        this.searchUsersAdminUseCase = searchUsersAdminUseCase;
         this.storagePort = storagePort;
     }
 
@@ -52,6 +56,14 @@ public class AdminController {
                 .map(AdminUserResponse::fromDomain)
                 .toList();
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/users/search")
+    public ResponseEntity<List<UserSearchResponse>> searchUsers(@RequestParam String q) {
+        List<UserSearchResponse> results = searchUsersAdminUseCase.execute(q).stream()
+                .map(UserSearchResponse::fromDomain)
+                .toList();
+        return ResponseEntity.ok(results);
     }
 
     @PatchMapping("/users/{id}/role")

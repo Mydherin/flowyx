@@ -225,7 +225,7 @@ export function AdminUserDetailPage() {
           totalCount={visibleVideos.length}
           onSelectAll={() => setSelectedIds(new Set(visibleVideos.map((v) => v.id)))}
           onDeselectAll={() => setSelectedIds(new Set())}
-          onAssignToUser={openAssignModal}
+          onCopyToUser={openAssignModal}
         />
       )}
 

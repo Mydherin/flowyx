@@ -10,7 +10,7 @@ interface SelectionBarProps {
   onDelete?: () => void
   onAddToMine?: () => void
   onDownload?: () => void
-  onAssignToUser?: () => void
+  onCopyToUser?: () => void
 }
 
 export function SelectionBar({
@@ -23,7 +23,7 @@ export function SelectionBar({
   onDelete,
   onAddToMine,
   onDownload,
-  onAssignToUser,
+  onCopyToUser,
 }: SelectionBarProps) {
   const allSelected = count === totalCount && totalCount > 0
 
@@ -62,8 +62,8 @@ export function SelectionBar({
               <Download size={20} />
             </ActionButton>
           )}
-          {onAssignToUser && (
-            <ActionButton onClick={onAssignToUser} disabled={count === 0} title="Assign to user">
+          {onCopyToUser && (
+            <ActionButton onClick={onCopyToUser} disabled={count === 0} title="Copy to users">
               <UserPlus size={20} />
             </ActionButton>
           )}

@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { Video, ShareRecipient } from '../types/video'
+import type { UserSearchResult } from '../types/sharing'
 
 export interface AdminUser {
   id: string
@@ -26,4 +27,7 @@ export const adminService = {
 
   assignVideoToUser: (targetUserId: string, videoId: string) =>
     api.post<Video>(`/api/v1/admin/users/${targetUserId}/videos/${videoId}/assign`),
+
+  searchUsers: (q: string) =>
+    api.get<UserSearchResult[]>(`/api/v1/admin/users/search?q=${encodeURIComponent(q)}`),
 }

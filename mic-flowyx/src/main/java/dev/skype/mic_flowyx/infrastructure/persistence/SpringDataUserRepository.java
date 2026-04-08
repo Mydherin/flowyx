@@ -17,6 +17,9 @@ interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, UUID> {
     @Query("SELECT u FROM UserJpaEntity u WHERE u.id != :excludeId AND (LOWER(u.nickname) LIKE LOWER(CONCAT('%',:q,'%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%',:q,'%')))")
     List<UserJpaEntity> searchByNicknameOrEmail(@Param("q") String q, @Param("excludeId") UUID excludeId);
 
+    @Query("SELECT u FROM UserJpaEntity u WHERE LOWER(u.nickname) LIKE LOWER(CONCAT('%',:q,'%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%',:q,'%'))")
+    List<UserJpaEntity> searchByNicknameOrEmailAll(@Param("q") String q);
+
     @Modifying
     @Transactional
     @Query("UPDATE UserJpaEntity u SET u.role = :role WHERE u.id = :id")

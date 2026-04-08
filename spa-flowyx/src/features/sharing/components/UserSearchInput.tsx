@@ -7,9 +7,11 @@ interface UserSearchInputProps {
   alreadySharedIds: Set<string>
   addingId: string | null
   onSelect: (user: UserSearchResult) => void
+  onSearch?: (query: string) => Promise<UserSearchResult[]>
 }
 
-export function UserSearchInput({ alreadySharedIds, addingId, onSelect }: UserSearchInputProps) {
+export function UserSearchInput({ alreadySharedIds, addingId, onSelect, onSearch }: UserSearchInputProps) {
+  const searchFn = onSearch ?? userService.search
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserSearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -30,7 +32,7 @@ export function UserSearchInput({ alreadySharedIds, addingId, onSelect }: UserSe
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const data = await userService.search(query.trim())
+        const data = await searchFn(query.trim())
         setResults(data)
         setOpen(true)
       } catch {
@@ -78,7 +80,7 @@ export function UserSearchInput({ alreadySharedIds, addingId, onSelect }: UserSe
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-secondary border border-border-default rounded-lg shadow-2xl overflow-hidden">
+        <div className="absolute bottom-full left-0 right-0 z-50 mb-1 max-h-56 overflow-y-auto bg-bg-secondary border border-border-default rounded-lg shadow-2xl">
           {results.map((user) => {
             const alreadyAdded = alreadySharedIds.has(user.id)
             return (
@@ -112,7 +114,7 @@ export function UserSearchInput({ alreadySharedIds, addingId, onSelect }: UserSe
       )}
 
       {open && !loading && query.trim().length >= 2 && results.length === 0 && (
-        <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-secondary border border-border-default rounded-lg shadow-2xl px-3 py-3">
+        <div className="absolute bottom-full left-0 right-0 z-50 mb-1 bg-bg-secondary border border-border-default rounded-lg shadow-2xl px-3 py-3">
           <p className="text-text-muted text-sm text-center">No users found</p>
         </div>
       )}

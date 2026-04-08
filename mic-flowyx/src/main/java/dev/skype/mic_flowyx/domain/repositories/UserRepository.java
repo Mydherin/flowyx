@@ -12,6 +12,7 @@ public interface UserRepository {
     Optional<User> findById(UUID id);
     List<User> findAll();
     List<User> searchByNicknameOrEmail(String query, UUID excludeUserId);
+    List<User> searchByNicknameOrEmail(String query);
     User save(User user);
     User update(User user);
     User updateRole(UUID id, Role role);

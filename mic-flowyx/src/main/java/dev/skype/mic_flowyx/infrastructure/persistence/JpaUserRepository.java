@@ -37,6 +37,13 @@ public class JpaUserRepository implements UserRepository {
     }
 
     @Override
+    public List<User> searchByNicknameOrEmail(String query) {
+        return springDataRepo.searchByNicknameOrEmailAll(query).stream()
+                .map(UserJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public User save(User user) {
         return springDataRepo.save(UserJpaEntity.fromDomain(user)).toDomain();
     }

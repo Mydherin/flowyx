@@ -96,6 +96,7 @@ export function useAuth() {
         }
 
         setUser({
+          id: backendUser.id,
           accessToken: tokenResponse.access_token,
           email: backendUser.email,
           name: backendUser.nickname,
@@ -123,6 +124,7 @@ export function useAuth() {
     error,
     isAuthenticated: user !== null,
     isAdmin: user?.role === 'ADMIN',
+    userId: user?.id ?? null,
     signIn,
     logout,
   }

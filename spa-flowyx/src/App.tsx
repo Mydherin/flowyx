@@ -25,7 +25,7 @@ export default function App() {
     if (!hasHydrated || !user) return
 
     setIsValidating(true)
-    callBackend<{ nickname: string; email: string; pictureUrl: string; role: string }>(
+    callBackend<{ id: string; nickname: string; email: string; pictureUrl: string; role: string }>(
       '/api/v1/auth/signin',
       user.accessToken,
       { picture: user.picture },
@@ -33,6 +33,7 @@ export default function App() {
       .then((backendUser) => {
         setUser({
           ...user,
+          id: backendUser.id,
           name: backendUser.nickname,
           email: backendUser.email,
           picture: backendUser.pictureUrl,

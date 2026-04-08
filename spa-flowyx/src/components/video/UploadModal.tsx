@@ -28,9 +28,37 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
   const [globalTags, setGlobalTags] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  // Tracks whether the native file picker is open (including any iOS preprocessing delay)
+  const [selecting, setSelecting] = useState(false)
 
   const updateItem = useCallback((id: string, patch: Partial<UploadItem>) => {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+  }, [])
+
+  // Opens the native file picker and shows a preparing state while it is open.
+  // On iOS, the OS may transcode videos (HEVC → H.264) before returning them to the
+  // browser — this can take several seconds with no visible feedback. By tracking the
+  // picker lifecycle we can display a spinner during that window.
+  const openFilePicker = useCallback(() => {
+    setSelecting(true)
+
+    const onReturn = () => {
+      // Short grace period so handleFileInputChange can fire first and clear the state
+      setTimeout(() => setSelecting(false), 400)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('focus', onReturn)
+    }
+
+    // visibilitychange: reliable on iOS (page goes hidden when photo library opens)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') onReturn()
+    }
+
+    // focus: reliable on desktop (window regains focus when OS dialog closes)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('focus', onReturn)
+
+    fileInputRef.current?.click()
   }, [])
 
   const addFiles = useCallback(
@@ -53,14 +81,13 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
 
       newItems.forEach((item) => {
         captureVideoThumbnail(item.file).then((thumb) => {
-          if (thumb) {
-            const preview = URL.createObjectURL(thumb)
-            setItems((prev) =>
-              prev.map((it) =>
-                it.id === item.id ? { ...it, thumbnail: thumb, thumbnailPreview: preview } : it,
-              ),
-            )
-          }
+          if (!thumb) return
+          const preview = URL.createObjectURL(thumb)
+          setItems((prev) =>
+            prev.map((it) =>
+              it.id === item.id ? { ...it, thumbnail: thumb, thumbnailPreview: preview } : it,
+            ),
+          )
         })
       })
     },
@@ -68,6 +95,7 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
   )
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelecting(false)
     if (e.target.files?.length) {
       addFiles(Array.from(e.target.files))
       e.target.value = ''
@@ -176,10 +204,21 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 pb-2 flex flex-col gap-3 min-h-0">
           {/* Dropzone */}
-          {!uploading && (
+          {!uploading && selecting && (
+            <div className="w-full border-2 border-dashed border-border-default rounded-xl p-5 flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <Loader2 size={18} className="text-text-muted animate-spin" />
+              </div>
+              <div className="text-center">
+                <p className="text-text-primary text-sm font-medium">Preparing videos…</p>
+                <p className="text-text-muted text-xs mt-0.5">This may take a moment on iPhone</p>
+              </div>
+            </div>
+          )}
+          {!uploading && !selecting && (
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openFilePicker}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
@@ -198,7 +237,7 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
                   {items.length > 0 ? 'Add more videos' : 'Choose videos'}
                 </p>
                 <p className="text-text-muted text-xs mt-0.5">
-                  Click or drag & drop · MP4, MOV, WebM · up to 500 MB each
+                  Click or drag & drop · MP4, MOV, WebM & more · up to 500 MB each
                 </p>
               </div>
             </button>
@@ -206,7 +245,7 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
           <input
             ref={fileInputRef}
             type="file"
-            accept="video/*"
+            accept="video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-matroska,video/x-msvideo,.mp4,.mov,.m4v,.webm,.mkv,.avi"
             multiple
             className="hidden"
             onChange={handleFileInputChange}

@@ -63,12 +63,20 @@ export function TagInput({ value, onChange, suggestions, placeholder = 'Add tags
           ref={inputRef}
           value={input}
           onChange={(e) => {
-            setInput(e.target.value)
+            const val = e.target.value
+            if ((val.endsWith(',') || val.endsWith(' ')) && val.trim()) {
+              addTag(val)
+              return
+            }
+            setInput(val)
             setOpen(true)
           }}
           onKeyDown={handleKeyDown}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onBlur={() => {
+            if (input.trim()) addTag(input)
+            setTimeout(() => setOpen(false), 120)
+          }}
           placeholder={value.length === 0 ? placeholder : ''}
           className="flex-1 min-w-[80px] bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
         />

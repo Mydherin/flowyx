@@ -10,6 +10,7 @@ import { UploadModal } from '../components/video/UploadModal'
 import { EditModal } from '../components/video/EditModal'
 import { SelectionBar } from '../components/video/SelectionBar'
 import { BulkTagEditModal } from '../components/video/BulkTagEditModal'
+import { RemakeScreenshotsModal } from '../components/video/RemakeScreenshotsModal'
 import { ShareModal } from '../features/sharing/components/ShareModal'
 import { SharerSelect } from '../components/video/SharerSelect'
 import { Button } from '../components/ui/Button'
@@ -55,6 +56,7 @@ export function DashboardPage() {
   const [editingVideo, setEditingVideo] = useState<Video | null>(null)
   const [showBulkTagEdit, setShowBulkTagEdit] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showRemakeScreenshots, setShowRemakeScreenshots] = useState(false)
 
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -177,7 +179,7 @@ export function DashboardPage() {
 
   const deselectAll = useCallback(() => setSelectedIds(new Set()), [])
 
-  const anyModalOpen = showBulkTagEdit || showShareModal || showUpload || !!editingVideo || playerIndex !== null
+  const anyModalOpen = showBulkTagEdit || showShareModal || showUpload || !!editingVideo || playerIndex !== null || showRemakeScreenshots
   useSelectModeExitOnClickout(isSelectMode && !anyModalOpen, exitSelectMode)
 
   // ─── Bulk download ────────────────────────────────────────────────────────────
@@ -418,6 +420,7 @@ export function DashboardPage() {
           onDelete={activeTab === 'mine' ? () => void handleBulkDelete() : undefined}
           onAddToMine={activeTab === 'shared' ? () => void handleBulkAddToMine() : undefined}
           onDownload={() => void handleBulkDownload()}
+          onRemakeScreenshots={activeTab === 'mine' ? () => setShowRemakeScreenshots(true) : undefined}
         />
       )}
 
@@ -471,6 +474,15 @@ export function DashboardPage() {
             // (e.g. newly uploaded videos, virtualizer stale rows, StrictMode effects).
             void silentRefreshMyVideos()
           }}
+        />
+      )}
+
+      {showRemakeScreenshots && (
+        <RemakeScreenshotsModal
+          videos={selectedVideos}
+          onClose={() => setShowRemakeScreenshots(false)}
+          onSuccess={() => { setShowRemakeScreenshots(false); exitSelectMode(); void silentRefreshMyVideos() }}
+          updateThumbnail={(id, blob) => videoService.updateThumbnail(id, blob)}
         />
       )}
 

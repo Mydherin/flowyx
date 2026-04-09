@@ -10,6 +10,7 @@ import { SharedWithFilter } from '../../components/video/SharedWithFilter'
 import { SelectionBar } from '../../components/video/SelectionBar'
 import { VideoPlayer } from '../../components/video/VideoPlayer'
 import { AdminPickUserModal } from '../../components/admin/AdminPickUserModal'
+import { RemakeScreenshotsModal } from '../../components/video/RemakeScreenshotsModal'
 import { UserRoleBadge } from '../../components/admin/UserRoleBadge'
 import { Button } from '../../components/ui/Button'
 
@@ -38,6 +39,7 @@ export function AdminUserDetailPage() {
   // event-bubbling race where exitSelectMode() clears selectedIds before
   // the assignment runs.
   const [assigningVideoIds, setAssigningVideoIds] = useState<string[]>([])
+  const [showRemakeScreenshots, setShowRemakeScreenshots] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!userId) return
@@ -84,12 +86,17 @@ export function AdminUserDetailPage() {
     return result
   }, [videos, activeTags, activeRecipientIds, recipients])
 
+  const selectedVideos = useMemo(
+    () => visibleVideos.filter((v) => selectedIds.has(v.id)),
+    [visibleVideos, selectedIds],
+  )
+
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false)
     setSelectedIds(new Set())
   }, [])
 
-  const anyModalOpen = showPickUser || playerIndex !== null
+  const anyModalOpen = showPickUser || playerIndex !== null || showRemakeScreenshots
   useSelectModeExitOnClickout(isSelectMode && !anyModalOpen, exitSelectMode)
 
   const handleTap = (video: Video) => {
@@ -227,6 +234,7 @@ export function AdminUserDetailPage() {
           onSelectAll={() => setSelectedIds(new Set(visibleVideos.map((v) => v.id)))}
           onDeselectAll={() => setSelectedIds(new Set())}
           onCopyToUser={openAssignModal}
+          onRemakeScreenshots={() => setShowRemakeScreenshots(true)}
         />
       )}
 
@@ -240,6 +248,15 @@ export function AdminUserDetailPage() {
       )}
 
       {/* Pick target users for assignment */}
+      {showRemakeScreenshots && (
+        <RemakeScreenshotsModal
+          videos={selectedVideos}
+          onClose={() => setShowRemakeScreenshots(false)}
+          onSuccess={() => { setShowRemakeScreenshots(false); exitSelectMode(); void fetchData() }}
+          updateThumbnail={(id, blob) => adminService.updateVideoThumbnail(id, blob)}
+        />
+      )}
+
       {showPickUser && (
         <AdminPickUserModal
           videoIds={assigningVideoIds}

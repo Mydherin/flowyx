@@ -29,6 +29,7 @@ public class VideoController {
     private final GetVideosUseCase getVideosUseCase;
     private final GetVideoUseCase getVideoUseCase;
     private final UpdateVideoUseCase updateVideoUseCase;
+    private final UpdateVideoThumbnailUseCase updateVideoThumbnailUseCase;
     private final DeleteVideoUseCase deleteVideoUseCase;
     private final GetSharedVideosUseCase getSharedVideosUseCase;
     private final BulkDeleteVideosUseCase bulkDeleteVideosUseCase;
@@ -44,6 +45,7 @@ public class VideoController {
                            GetVideosUseCase getVideosUseCase,
                            GetVideoUseCase getVideoUseCase,
                            UpdateVideoUseCase updateVideoUseCase,
+                           UpdateVideoThumbnailUseCase updateVideoThumbnailUseCase,
                            DeleteVideoUseCase deleteVideoUseCase,
                            GetSharedVideosUseCase getSharedVideosUseCase,
                            BulkDeleteVideosUseCase bulkDeleteVideosUseCase,
@@ -58,6 +60,7 @@ public class VideoController {
         this.getVideosUseCase = getVideosUseCase;
         this.getVideoUseCase = getVideoUseCase;
         this.updateVideoUseCase = updateVideoUseCase;
+        this.updateVideoThumbnailUseCase = updateVideoThumbnailUseCase;
         this.deleteVideoUseCase = deleteVideoUseCase;
         this.getSharedVideosUseCase = getSharedVideosUseCase;
         this.bulkDeleteVideosUseCase = bulkDeleteVideosUseCase;
@@ -178,6 +181,17 @@ public class VideoController {
         Video updated = updateVideoUseCase.execute(
                 new UpdateVideoCommand(id, userEmail, request.description(), request.tags())
         );
+        VideoWithUrls withUrls = getVideoUseCase.execute(updated.id(), userEmail);
+        return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
+    }
+
+    @PatchMapping(value = "/{id}/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<VideoResponse> updateThumbnail(
+            @PathVariable UUID id,
+            @RequestParam("thumbnail") MultipartFile thumbnail,
+            @AuthenticationPrincipal String userEmail
+    ) throws IOException {
+        Video updated = updateVideoThumbnailUseCase.execute(id, userEmail, thumbnail.getInputStream(), thumbnail.getSize());
         VideoWithUrls withUrls = getVideoUseCase.execute(updated.id(), userEmail);
         return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
     }

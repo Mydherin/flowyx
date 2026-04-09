@@ -30,4 +30,10 @@ export const adminService = {
 
   searchUsers: (q: string) =>
     api.get<UserSearchResult[]>(`/api/v1/admin/users/search?q=${encodeURIComponent(q)}`),
+
+  updateVideoThumbnail: (videoId: string, thumbnail: Blob): Promise<void> => {
+    const formData = new FormData()
+    formData.append('thumbnail', thumbnail, 'thumbnail.jpg')
+    return api.patchMultipart<void>(`/api/v1/admin/videos/${videoId}/thumbnail`, formData)
+  },
 }

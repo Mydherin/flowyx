@@ -208,6 +208,18 @@ export const videoService = {
   markViewed: (id: string) =>
     request<void>(`/api/v1/videos/${id}/viewed`, { method: 'POST' }),
 
+  updateThumbnail: async (id: string, thumbnail: Blob): Promise<void> => {
+    const formData = new FormData()
+    formData.append('thumbnail', thumbnail, 'thumbnail.jpg')
+    await fetch(`${API_BASE}/api/v1/videos/${id}/thumbnail`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: formData,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    })
+  },
+
   download: async (ids: string[]): Promise<void> => {
     const response = await fetch(`${API_BASE}/api/v1/videos/download`, {
       method: 'POST',

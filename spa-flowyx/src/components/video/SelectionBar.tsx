@@ -1,4 +1,4 @@
-import { Tag, Trash2, Share2, Download, FolderDown, UserPlus } from 'lucide-react'
+import { Tag, Trash2, Share2, Download, FolderDown, UserPlus, ImagePlay } from 'lucide-react'
 
 interface SelectionBarProps {
   count: number
@@ -11,6 +11,7 @@ interface SelectionBarProps {
   onAddToMine?: () => void
   onDownload?: () => void
   onCopyToUser?: () => void
+  onRemakeScreenshots?: () => void
 }
 
 export function SelectionBar({
@@ -24,6 +25,7 @@ export function SelectionBar({
   onAddToMine,
   onDownload,
   onCopyToUser,
+  onRemakeScreenshots,
 }: SelectionBarProps) {
   const allSelected = count === totalCount && totalCount > 0
 
@@ -65,6 +67,11 @@ export function SelectionBar({
           {onCopyToUser && (
             <ActionButton onClick={onCopyToUser} disabled={count === 0} title="Copy to users">
               <UserPlus size={20} />
+            </ActionButton>
+          )}
+          {onRemakeScreenshots && (
+            <ActionButton onClick={onRemakeScreenshots} disabled={count === 0} title="Regenerate thumbnails">
+              <ImagePlay size={20} />
             </ActionButton>
           )}
           {onDelete && (

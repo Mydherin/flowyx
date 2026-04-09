@@ -10,13 +10,17 @@ interface AdminPickUserModalProps {
   videoIds: string[]
   /** The user whose page we're on — excluded from results (avoid copying back to source) */
   sourceUserId: string
+  /** Called when the user dismisses the modal without copying (X, Cancel, backdrop) */
   onClose: () => void
+  /** Called after all copy assignments succeed */
+  onSuccess: () => void
 }
 
 export function AdminPickUserModal({
   videoIds,
   sourceUserId,
   onClose,
+  onSuccess,
 }: AdminPickUserModalProps) {
   const [pending, setPending] = useState<UserSearchResult[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -44,7 +48,7 @@ export function AdminPickUserModal({
           videoIds.map((videoId) => adminService.assignVideoToUser(user.id, videoId)),
         ),
       )
-      onClose()
+      onSuccess()
     } catch {
       setError('Some assignments failed. Please try again.')
       setIsSubmitting(false)

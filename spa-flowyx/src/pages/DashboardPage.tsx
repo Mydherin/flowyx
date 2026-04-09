@@ -448,6 +448,7 @@ export function DashboardPage() {
           onSuccess={(updated) => {
             updated.forEach((v) => patchVideo(v.id, { tags: v.tags }))
             setShowBulkTagEdit(false)
+            exitSelectMode()
           }}
         />
       )}
@@ -457,9 +458,13 @@ export function DashboardPage() {
           videoIds={selectedIdsArray}
           onClose={(result) => {
             setShowShareModal(false)
-            if (result) {
-              patchVideo(result.videoId, { sharedWithCount: result.shares.length })
-              reconcileShareRecipients(result.videoId, result.shares)
+            if (result.changed) {
+              // Single-video optimistic patch: update share count and recipients in-place
+              if (result.videoId && result.shares) {
+                patchVideo(result.videoId, { sharedWithCount: result.shares.length })
+                reconcileShareRecipients(result.videoId, result.shares)
+              }
+              exitSelectMode()
             }
             // Silent background refresh guarantees the grid reflects the true server
             // state — covers any edge cases where the optimistic patch lags behind

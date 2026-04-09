@@ -8,7 +8,7 @@ import { UserSearchInput } from './UserSearchInput'
 
 interface ShareModalProps {
   videoIds: string[]
-  onClose: (result?: { videoId: string; shares: VideoShare[] }) => void
+  onClose: (result: { changed: boolean; videoId?: string; shares?: VideoShare[] }) => void
 }
 
 export function ShareModal({ videoIds, onClose }: ShareModalProps) {
@@ -17,6 +17,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [changed, setChanged] = useState(false)
   const isBulk = videoIds.length > 1
 
   const loadShares = useCallback(async () => {
@@ -62,6 +63,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
         sharedAt: new Date().toISOString(),
       }
       setShares((prev) => [...prev.filter((s) => s.userId !== user.id), newShare])
+      setChanged(true)
     } catch {
       setError('Failed to add member')
     } finally {
@@ -79,6 +81,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
         await shareService.unshare(videoIds[0], userId)
       }
       setShares((prev) => prev.filter((s) => s.userId !== userId))
+      setChanged(true)
     } catch {
       setError('Failed to remove member')
     } finally {
@@ -86,13 +89,13 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
     }
   }
 
-  // For single-video mode the result carries back the final shares and the videoId
-  // so the caller never needs to read from a stale closure.
   const handleClose = () => {
     if (isBulk) {
-      onClose(undefined)
+      onClose({ changed })
     } else {
-      onClose({ videoId: videoIds[0], shares })
+      // Single-video: also carry back the final shares so the caller can
+      // patch the store without a round-trip, regardless of whether anything changed.
+      onClose({ changed, videoId: videoIds[0], shares })
     }
   }
 

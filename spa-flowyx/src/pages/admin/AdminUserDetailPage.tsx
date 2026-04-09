@@ -244,10 +244,8 @@ export function AdminUserDetailPage() {
         <AdminPickUserModal
           videoIds={assigningVideoIds}
           sourceUserId={user.id}
-          onClose={() => {
-            setShowPickUser(false)
-            exitSelectMode()
-          }}
+          onClose={() => setShowPickUser(false)}
+          onSuccess={() => { setShowPickUser(false); exitSelectMode() }}
         />
       )}
     </div>

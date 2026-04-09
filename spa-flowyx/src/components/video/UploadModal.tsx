@@ -117,14 +117,11 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
       pending.map(async (item) => {
         updateItem(item.id, { status: 'uploading', progress: 0 })
         try {
-          const formData = new FormData()
-          formData.append('video', item.file)
-          if (item.thumbnail) formData.append('thumbnail', item.thumbnail, 'thumbnail.jpg')
-          formData.append('description', '')
-          formData.append('tags', globalTags.join(','))
-
-          await videoService.uploadWithProgress(
-            formData,
+          await videoService.uploadChunked(
+            item.file,
+            item.thumbnail,
+            '',
+            globalTags,
             (pct) => updateItem(item.id, { progress: pct }),
             item.controller.signal,
             () => updateItem(item.id, { status: 'processing', progress: 95 }),

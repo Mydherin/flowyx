@@ -5,6 +5,7 @@ import dev.skype.mic_flowyx.application.usecases.sharing.MarkVideoViewedUseCase;
 import dev.skype.mic_flowyx.application.usecases.video.*;
 import dev.skype.mic_flowyx.domain.entities.Video;
 import dev.skype.mic_flowyx.infrastructure.controllers.dto.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,6 +24,8 @@ import java.util.UUID;
 public class VideoController {
 
     private final UploadVideoUseCase uploadVideoUseCase;
+    private final UploadVideoChunkUseCase uploadVideoChunkUseCase;
+    private final CompleteVideoUploadUseCase completeVideoUploadUseCase;
     private final GetVideosUseCase getVideosUseCase;
     private final GetVideoUseCase getVideoUseCase;
     private final UpdateVideoUseCase updateVideoUseCase;
@@ -36,6 +39,8 @@ public class VideoController {
     private final DownloadVideosUseCase downloadVideosUseCase;
 
     public VideoController(UploadVideoUseCase uploadVideoUseCase,
+                           UploadVideoChunkUseCase uploadVideoChunkUseCase,
+                           CompleteVideoUploadUseCase completeVideoUploadUseCase,
                            GetVideosUseCase getVideosUseCase,
                            GetVideoUseCase getVideoUseCase,
                            UpdateVideoUseCase updateVideoUseCase,
@@ -48,6 +53,8 @@ public class VideoController {
                            MarkVideoViewedUseCase markVideoViewedUseCase,
                            DownloadVideosUseCase downloadVideosUseCase) {
         this.uploadVideoUseCase = uploadVideoUseCase;
+        this.uploadVideoChunkUseCase = uploadVideoChunkUseCase;
+        this.completeVideoUploadUseCase = completeVideoUploadUseCase;
         this.getVideosUseCase = getVideosUseCase;
         this.getVideoUseCase = getVideoUseCase;
         this.updateVideoUseCase = updateVideoUseCase;
@@ -85,6 +92,52 @@ public class VideoController {
         );
 
         Video saved = uploadVideoUseCase.execute(command);
+        VideoWithUrls withUrls = getVideoUseCase.execute(saved.id(), userEmail);
+        return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
+    }
+
+    // ── Chunked upload ────────────────────────────────────────────────────────
+    // Each chunk is a raw PUT with Content-Type: application/octet-stream.
+    // The browser sends N small requests (≤2 MB each) instead of one huge POST,
+    // so no proxy timeout can cut the connection mid-file.
+
+    @PutMapping("/chunks/{videoId}/{index}")
+    public ResponseEntity<Void> uploadChunk(
+            @PathVariable UUID videoId,
+            @PathVariable int index,
+            HttpServletRequest request,
+            @AuthenticationPrincipal String userEmail
+    ) throws IOException {
+        long size = request.getContentLengthLong();
+        uploadVideoChunkUseCase.execute(videoId, index, request.getInputStream(), size);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(value = "/chunks/{videoId}/complete", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<VideoResponse> completeUpload(
+            @PathVariable UUID videoId,
+            @RequestParam("description") String description,
+            @RequestParam("tags") String tags,
+            @RequestParam("totalChunks") int totalChunks,
+            @RequestParam("totalSize") long totalSize,
+            @RequestParam("fileName") String fileName,
+            @RequestParam("contentType") String contentType,
+            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @AuthenticationPrincipal String userEmail
+    ) throws IOException {
+        List<String> tagList = parseTags(tags);
+        Video saved = completeVideoUploadUseCase.execute(
+                videoId,
+                userEmail,
+                description.trim(),
+                tagList,
+                totalChunks,
+                totalSize,
+                fileName,
+                contentType,
+                thumbnail != null && !thumbnail.isEmpty() ? thumbnail.getInputStream() : null,
+                thumbnail != null && !thumbnail.isEmpty() ? thumbnail.getSize() : 0L
+        );
         VideoWithUrls withUrls = getVideoUseCase.execute(saved.id(), userEmail);
         return ResponseEntity.ok(VideoResponse.fromDomain(withUrls));
     }

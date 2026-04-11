@@ -16,6 +16,7 @@ import { SharerSelect } from '../components/video/SharerSelect'
 import { Button } from '../components/ui/Button'
 import { useVideoStore } from '../stores/useVideoStore'
 import { useSharedVideoStore } from '../stores/useSharedVideoStore'
+import { useFilterStore } from '../stores/useFilterStore'
 import { useSelectModeExitOnClickout } from '../hooks/useSelectModeExitOnClickout'
 
 type Tab = 'mine' | 'shared'
@@ -43,11 +44,16 @@ export function DashboardPage() {
   // ─── UI state ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<Tab>('mine')
 
-  const [activeTags, setActiveTags] = useState<string[]>([])
-  const [activeRecipientIds, setActiveRecipientIds] = useState<string[]>([])
-
-  const [selectedSharerId, setSelectedSharerId] = useState<string | null>(null)
-  const [activeSharedTags, setActiveSharedTags] = useState<string[]>([])
+  const activeTags            = useFilterStore((s) => s.myVideos.activeTags)
+  const activeRecipientIds    = useFilterStore((s) => s.myVideos.activeRecipientIds)
+  const selectedSharerId      = useFilterStore((s) => s.shared.selectedSharerId)
+  const activeSharedTags      = useFilterStore((s) => s.shared.activeSharedTags)
+  const setActiveTags         = useFilterStore((s) => s.setMyVideosTags)
+  const setActiveRecipientIds = useFilterStore((s) => s.setMyVideosRecipientIds)
+  const pruneRecipientIds     = useFilterStore((s) => s.pruneMyVideosRecipientIds)
+  const setSelectedSharerId   = useFilterStore((s) => s.setSelectedSharerId)
+  const setActiveSharedTags   = useFilterStore((s) => s.setActiveSharedTags)
+  const initializeSharer      = useFilterStore((s) => s.initializeSharer)
 
   const [playerIndex, setPlayerIndex] = useState<number | null>(null)
   const [playerVideos, setPlayerVideos] = useState<Video[]>([])
@@ -83,12 +89,8 @@ export function DashboardPage() {
   // Keep active recipient filter IDs in sync when shareRecipients changes.
   // Return the same reference when nothing is removed to avoid a spurious re-render.
   useEffect(() => {
-    const validIds = new Set(shareRecipients.map((r) => r.userId))
-    setActiveRecipientIds((prev) => {
-      const next = prev.filter((id) => validIds.has(id))
-      return next.length === prev.length ? prev : next
-    })
-  }, [shareRecipients])
+    pruneRecipientIds(shareRecipients.map((r) => r.userId))
+  }, [shareRecipients, pruneRecipientIds])
 
   const recipientVideoIdSet = useMemo(() => {
     if (!activeRecipientIds.length) return null
@@ -139,18 +141,19 @@ export function DashboardPage() {
   }, [sharedBySelected, activeSharedTags])
 
   // ─── Data fetching ────────────────────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Trigger fetches when the active tab changes
   useEffect(() => {
     if (activeTab === 'mine') void fetchMyVideos()
-    else {
-      void fetchSharedVideos().then(() => {
-        const firstSharerId =
-          useSharedVideoStore.getState().videos.find((v) => v.sharedByUserId)?.sharedByUserId ?? null
-        setSelectedSharerId(firstSharerId)
-        setActiveSharedTags([])
-      })
-    }
-  }, [activeTab])
+    else void fetchSharedVideos()
+  }, [activeTab, fetchMyVideos, fetchSharedVideos])
+
+  // Auto-select first sharer once — reacts to data arriving, not to tab clicks.
+  // initializeSharer is a no-op after the first call, so tab re-entries are safe.
+  useEffect(() => {
+    if (sharedVideos.length === 0) return
+    const firstSharerId = sharedVideos.find((v) => v.sharedByUserId)?.sharedByUserId ?? null
+    initializeSharer(firstSharerId)
+  }, [sharedVideos, initializeSharer])
 
   // ─── Selection mode ───────────────────────────────────────────────────────────
   const exitSelectMode = useCallback(() => {
@@ -327,7 +330,6 @@ export function DashboardPage() {
             onClick={(e) => {
               e.stopPropagation()
               setActiveTab(tab)
-              setActiveRecipientIds([])
               exitSelectMode()
             }}
             className={[
@@ -366,7 +368,7 @@ export function DashboardPage() {
             <SharerSelect
               sharers={sharers}
               selectedId={selectedSharerId}
-              onChange={(id) => { setSelectedSharerId(id); setActiveSharedTags([]) }}
+              onChange={setSelectedSharerId}
             />
           </div>
           {sharedTags.length > 0 && (

@@ -4,6 +4,7 @@ import { shareService } from '../../../services/shareService'
 import type { VideoShare } from '../../../types/video'
 import type { UserSearchResult } from '../../../types/sharing'
 import { Button } from '../../../components/ui/Button'
+import { BottomSheet } from '../../../components/ui/BottomSheet'
 import { UserSearchInput } from './UserSearchInput'
 
 interface ShareModalProps {
@@ -102,11 +103,7 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
   const alreadySharedIds = new Set(shares.map((s) => s.userId))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
-
-      <div className="relative w-full sm:max-w-md bg-bg-secondary border-0 sm:border sm:border-border-default rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[85vh]">
+    <BottomSheet onBackdropClick={handleClose} maxHeight="max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           <div>
@@ -206,7 +203,6 @@ export function ShareModal({ videoIds, onClose }: ShareModalProps) {
             Done
           </Button>
         </div>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }

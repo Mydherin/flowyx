@@ -4,6 +4,7 @@ import { videoService } from '../../services/videoService'
 import { captureVideoThumbnail } from '../../lib/thumbnail'
 import { Button } from '../ui/Button'
 import { TagInput } from '../ui/TagInput'
+import { BottomSheet } from '../ui/BottomSheet'
 
 interface UploadItem {
   id: string
@@ -169,12 +170,11 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
     items.length > 0 && items.every((it) => ['done', 'error', 'cancelled'].includes(it.status))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={uploading ? undefined : onClose}
-      />
-      <div className="relative w-full sm:max-w-lg bg-bg-secondary border-0 sm:border sm:border-border-default rounded-t-2xl sm:rounded-2xl max-h-[90dvh] flex flex-col">
+    <BottomSheet
+      onBackdropClick={uploading ? undefined : onClose}
+      maxWidth="sm:max-w-lg"
+      maxHeight="max-h-[90dvh]"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -347,8 +347,7 @@ export function UploadModal({ onClose, onSuccess, existingTags }: UploadModalPro
             </>
           )}
         </div>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }
 

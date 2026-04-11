@@ -41,7 +41,6 @@ export function RemakeScreenshotsModal({
 
     setFailed(failCount)
     setState('done')
-    onSuccess()
   }
 
   const succeeded = progress - failed
@@ -126,7 +125,7 @@ export function RemakeScreenshotsModal({
                 ? `${succeeded} succeeded, ${failed} could not be processed.`
                 : 'No thumbnails could be regenerated.'}
             </p>
-            <Button variant="ghost" size="md" type="button" onClick={onClose} className="w-full">
+            <Button variant="ghost" size="md" type="button" onClick={onSuccess} className="w-full">
               Close
             </Button>
           </div>

@@ -90,6 +90,8 @@ export function SelectionBar({
           {allSelected ? 'Deselect all' : 'Select all'}
         </button>
       </div>
+      {/* Home indicator clearance */}
+      <div className="pb-safe" />
     </div>
   )
 }

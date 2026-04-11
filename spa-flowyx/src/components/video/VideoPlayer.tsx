@@ -638,8 +638,11 @@ export function VideoPlayer({ videos, initialIndex, onClose, onVideoViewed }: Vi
       </div>
 
       {/* ── Top bar ── */}
-      <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 pb-8
-                       bg-linear-to-b from-black/70 to-transparent z-10 ${ctrlClass}`}>
+      <div
+        className={`absolute top-0 left-0 right-0 flex items-center justify-between px-4 pb-8
+                     bg-linear-to-b from-black/70 to-transparent z-10 ${ctrlClass}`}
+        style={{ paddingTop: 'calc(1rem + var(--sat))' }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
@@ -720,8 +723,11 @@ export function VideoPlayer({ videos, initialIndex, onClose, onVideoViewed }: Vi
       )}
 
       {/* ── Bottom controls ── */}
-      <div className={`absolute bottom-0 left-0 right-0 z-10 px-4 pt-12 pb-6
-                       bg-linear-to-t from-black/90 via-black/50 to-transparent ${ctrlClass}`}>
+      <div
+        className={`absolute bottom-0 left-0 right-0 z-10 px-4 pt-12
+                     bg-linear-to-t from-black/90 via-black/50 to-transparent ${ctrlClass}`}
+        style={{ paddingBottom: 'calc(1.5rem + var(--sab))' }}
+      >
 
         {/* Description & tags */}
         {(current.description || current.tags.length > 0) && (

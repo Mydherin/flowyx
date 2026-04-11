@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSelectModeExitOnClickout } from '../../hooks/useSelectModeExitOnClickout'
 import { useNavigate, useParams } from 'react-router'
+import { useFilterStore } from '../../stores/useFilterStore'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { adminService, type AdminUser } from '../../services/adminService'
 import type { Video, ShareRecipient } from '../../types/video'
@@ -24,9 +25,15 @@ export function AdminUserDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Filters — mirrors "My Videos" tab in dashboard
-  const [activeTags, setActiveTags] = useState<string[]>([])
-  const [activeRecipientIds, setActiveRecipientIds] = useState<string[]>([])
+  // Filters — persisted in the global filter store so they survive navigation
+  const activeTags         = useFilterStore((s) => s.admin[userId!]?.activeTags ?? [])
+  const activeRecipientIds = useFilterStore((s) => s.admin[userId!]?.activeRecipientIds ?? [])
+  const setAdminTags       = useFilterStore((s) => s.setAdminTags)
+  const setAdminRecipients = useFilterStore((s) => s.setAdminRecipientIds)
+  const ensureAdminEntry   = useFilterStore((s) => s.ensureAdminEntry)
+
+  const setActiveTags         = useCallback((tags: string[]) => setAdminTags(userId!, tags), [setAdminTags, userId])
+  const setActiveRecipientIds = useCallback((ids: string[]) => setAdminRecipients(userId!, ids), [setAdminRecipients, userId])
 
   // Selection mode
   const [isSelectMode, setIsSelectMode] = useState(false)
@@ -64,6 +71,11 @@ export function AdminUserDetailPage() {
   useEffect(() => {
     void fetchData()
   }, [fetchData])
+
+  // Seed a stable store entry so filter selectors never return a new [] reference
+  useEffect(() => {
+    ensureAdminEntry(userId!)
+  }, [userId, ensureAdminEntry])
 
   const allTags = useMemo(
     () => [...new Set(videos.flatMap((v) => v.tags))].sort(),

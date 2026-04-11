@@ -1,2 +1,0 @@
-- Fix hover on tags, nothing to show and that part get highlighted
-- Check how could I see and how it work from the phone

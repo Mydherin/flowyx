@@ -1,4 +1,5 @@
 import { useAuthStore } from '../features/auth/store'
+import { useToastStore } from '../stores/useToastStore'
 import type { Video } from '../types/video'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
@@ -41,6 +42,22 @@ function sendChunk(
 
     xhr.send(chunk)
   })
+}
+
+function triggerDownload(url: string, filename: string): void {
+  // iOS PWA (standalone): after the system download sheet is dismissed, Safari fires
+  // a back-navigation that would refresh the app. Pushing a history entry first means
+  // that back-navigation lands here instead of navigating out of the PWA.
+  const isIosPwa = /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  if (isIosPwa) history.pushState(null, '')
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 function authHeaders(): Record<string, string> {
@@ -221,6 +238,7 @@ export const videoService = {
   },
 
   download: async (ids: string[]): Promise<void> => {
+    useToastStore.getState().show(ids.length === 1 ? 'Downloading video…' : `Preparing ${ids.length} videos…`)
     const response = await fetch(`${API_BASE}/api/v1/videos/download`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -229,10 +247,10 @@ export const videoService = {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'videos.zip'
-    a.click()
+    const disposition = response.headers.get('Content-Disposition') ?? ''
+    const match = /filename="?([^";\r\n]+)"?/.exec(disposition)
+    const filename = match?.[1]?.trim() ?? 'videos.zip'
+    triggerDownload(url, filename)
     URL.revokeObjectURL(url)
   },
 }

@@ -37,6 +37,7 @@ public class VideoController {
     private final CloneVideoUseCase cloneVideoUseCase;
     private final BulkCloneVideosUseCase bulkCloneVideosUseCase;
     private final MarkVideoViewedUseCase markVideoViewedUseCase;
+    private final DownloadVideoUseCase downloadVideoUseCase;
     private final DownloadVideosUseCase downloadVideosUseCase;
 
     public VideoController(UploadVideoUseCase uploadVideoUseCase,
@@ -53,6 +54,7 @@ public class VideoController {
                            CloneVideoUseCase cloneVideoUseCase,
                            BulkCloneVideosUseCase bulkCloneVideosUseCase,
                            MarkVideoViewedUseCase markVideoViewedUseCase,
+                           DownloadVideoUseCase downloadVideoUseCase,
                            DownloadVideosUseCase downloadVideosUseCase) {
         this.uploadVideoUseCase = uploadVideoUseCase;
         this.uploadVideoChunkUseCase = uploadVideoChunkUseCase;
@@ -68,6 +70,7 @@ public class VideoController {
         this.cloneVideoUseCase = cloneVideoUseCase;
         this.bulkCloneVideosUseCase = bulkCloneVideosUseCase;
         this.markVideoViewedUseCase = markVideoViewedUseCase;
+        this.downloadVideoUseCase = downloadVideoUseCase;
         this.downloadVideosUseCase = downloadVideosUseCase;
     }
 
@@ -265,9 +268,16 @@ public class VideoController {
             @AuthenticationPrincipal String userEmail,
             HttpServletResponse response
     ) throws IOException {
-        response.setContentType("application/zip");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"videos.zip\"");
-        downloadVideosUseCase.execute(request.videoIds(), userEmail, response.getOutputStream());
+        if (request.videoIds().size() == 1) {
+            // Single video: stream the raw file so the browser saves it with the correct
+            // name and content type. No zip wrapper needed.
+            downloadVideoUseCase.execute(request.videoIds().get(0), userEmail, response);
+        } else {
+            // Multiple videos: zip them together.
+            response.setContentType("application/zip");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"videos.zip\"");
+            downloadVideosUseCase.execute(request.videoIds(), userEmail, response.getOutputStream());
+        }
     }
 
     private List<String> parseTags(String tags) {

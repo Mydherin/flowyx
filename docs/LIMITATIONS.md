@@ -1,0 +1,1 @@
+- On iPhone PWA after comes from download file menu the appliation gets refreshed

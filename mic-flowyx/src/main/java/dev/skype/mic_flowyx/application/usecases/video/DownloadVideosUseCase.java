@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.zip.Deflater;
@@ -61,6 +62,18 @@ public class DownloadVideosUseCase {
                     log.warn("Failed to stream video {} into zip: {}", videoId, e.getMessage());
                 }
                 zip.closeEntry();
+
+                // Touch updatedAt — best-effort; skipped on error so one bad video
+                // doesn't abort the remaining entries.
+                try {
+                    videoRepository.update(new Video(
+                            video.id(), video.userId(), video.description(), video.tags(),
+                            video.videoKey(), video.thumbnailKey(), video.fileSizeBytes(),
+                            video.contentType(), video.status(), video.createdAt(), OffsetDateTime.now()
+                    ));
+                } catch (Exception e) {
+                    log.warn("Failed to touch updatedAt for video {} after zip: {}", videoId, e.getMessage());
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to create zip archive", e);

@@ -2,12 +2,14 @@ import { Link, Outlet } from 'react-router'
 import { LogOut, LayoutDashboard, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { Button } from '../components/ui/Button'
+import { Toaster } from '../components/ui/Toaster'
 
 export function AppLayout() {
   const { user, logout, isAdmin } = useAuth()
 
   return (
     <div className="min-h-dvh pb-safe bg-bg-primary flex flex-col">
+      <Toaster />
       <header className="flex flex-col border-b border-border-subtle">
         {/* Spacer that exactly matches the iOS status bar height */}
         <div className="pt-safe" />

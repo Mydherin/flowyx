@@ -14,7 +14,7 @@ interface BulkTagEditModalProps {
 }
 
 export function BulkTagEditModal({ videoIds, initialTags, existingTags, onClose, onSuccess }: BulkTagEditModalProps) {
-  const [tags, setTags] = useState<string[]>(initialTags)
+  const [tags, setTags] = useState<string[]>([...initialTags].sort())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,7 +23,11 @@ export function BulkTagEditModal({ videoIds, initialTags, existingTags, onClose,
     setSaving(true)
     setError(null)
     try {
-      const updated = await videoService.bulkUpdateTags(videoIds, tags)
+      // Compute deltas: tags added and removed relative to initialTags
+      const tagsToAdd = tags.filter((tag) => !initialTags.includes(tag))
+      const tagsToRemove = initialTags.filter((tag) => !tags.includes(tag))
+      
+      const updated = await videoService.bulkUpdateTags(videoIds, tagsToAdd, tagsToRemove)
       onSuccess(updated)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update tags')

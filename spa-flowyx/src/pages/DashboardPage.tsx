@@ -50,9 +50,11 @@ export function DashboardPage() {
   const activeSharedTags      = useFilterStore((s) => s.shared.activeSharedTags)
   const setActiveTags         = useFilterStore((s) => s.setMyVideosTags)
   const setActiveRecipientIds = useFilterStore((s) => s.setMyVideosRecipientIds)
+  const pruneMyVideosTags     = useFilterStore((s) => s.pruneMyVideosTags)
   const pruneRecipientIds     = useFilterStore((s) => s.pruneMyVideosRecipientIds)
   const setSelectedSharerId   = useFilterStore((s) => s.setSelectedSharerId)
   const setActiveSharedTags   = useFilterStore((s) => s.setActiveSharedTags)
+  const pruneActiveSharedTags = useFilterStore((s) => s.pruneActiveSharedTags)
   const initializeSharer      = useFilterStore((s) => s.initializeSharer)
 
   const [playerIndex, setPlayerIndex] = useState<number | null>(null)
@@ -83,7 +85,7 @@ export function DashboardPage() {
     if (selectedVideos.length === 0) return []
     return selectedVideos[0].tags.filter((tag) =>
       selectedVideos.every((v) => v.tags.includes(tag)),
-    )
+    ).sort()
   }, [selectedVideos])
 
   // Keep active recipient filter IDs in sync when shareRecipients changes.
@@ -91,6 +93,12 @@ export function DashboardPage() {
   useEffect(() => {
     pruneRecipientIds(shareRecipients.map((r) => r.userId))
   }, [shareRecipients, pruneRecipientIds])
+
+  // Keep active tag filters in sync when allTags changes.
+  // Automatically removes tags from filter if they no longer exist.
+  useEffect(() => {
+    pruneMyVideosTags(allTags)
+  }, [allTags, pruneMyVideosTags])
 
   const recipientVideoIdSet = useMemo(() => {
     if (!activeRecipientIds.length) return null
@@ -134,6 +142,12 @@ export function DashboardPage() {
     sharedBySelected.forEach((v) => v.tags.forEach((t) => set.add(t)))
     return Array.from(set).sort()
   }, [sharedBySelected])
+
+  // Keep active shared tag filters in sync when sharedTags changes.
+  // Automatically removes tags from filter if they no longer exist.
+  useEffect(() => {
+    pruneActiveSharedTags(sharedTags)
+  }, [sharedTags, pruneActiveSharedTags])
 
   const visibleSharedVideos = useMemo(() => {
     if (!activeSharedTags.length) return sharedBySelected

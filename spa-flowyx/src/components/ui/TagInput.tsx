@@ -15,6 +15,7 @@ export function TagInput({ value, onChange, suggestions, placeholder = 'Add tags
 
   const filtered = suggestions
     .filter((s) => !value.includes(s) && s.toLowerCase().includes(input.toLowerCase().trim()))
+    .sort()
 
   const addTag = (tag: string) => {
     const t = tag.trim().toLowerCase()

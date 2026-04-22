@@ -205,11 +205,11 @@ export const videoService = {
       body: JSON.stringify({ videoIds: ids }),
     }),
 
-  bulkUpdateTags: (ids: string[], tags: string[]) =>
+  bulkUpdateTags: (ids: string[], tagsToAdd: string[], tagsToRemove: string[]) =>
     request<Video[]>('/api/v1/videos/bulk-tags', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoIds: ids, tags }),
+      body: JSON.stringify({ videoIds: ids, tagsToAdd, tagsToRemove }),
     }),
 
   clone: (id: string) =>

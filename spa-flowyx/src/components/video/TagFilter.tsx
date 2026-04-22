@@ -24,7 +24,7 @@ export function TagFilter({ tags, activeTags, onChange }: TagFilterProps) {
   }, [open])
 
   const filtered = search.trim()
-    ? tags.filter((t) => t.toLowerCase().includes(search.toLowerCase().trim()))
+    ? tags.filter((t) => t.toLowerCase().includes(search.toLowerCase().trim())).sort()
     : tags
 
   const toggle = (tag: string) => {

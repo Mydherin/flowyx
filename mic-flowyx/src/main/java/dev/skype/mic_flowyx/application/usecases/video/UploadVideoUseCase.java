@@ -10,6 +10,7 @@ import dev.skype.mic_flowyx.domain.repositories.VideoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -48,11 +49,14 @@ public class UploadVideoUseCase {
                 thumbnailUploaded = true;
             }
 
+            List<String> tags = command.tags() != null ? new ArrayList<>(command.tags()) : new ArrayList<>();
+            tags.sort(String.CASE_INSENSITIVE_ORDER);
+
             Video video = new Video(
                     command.videoId(),
                     user.id(),
                     command.description(),
-                    command.tags() != null ? command.tags() : List.of(),
+                    tags,
                     videoKey,
                     thumbnailKey,
                     command.videoSize(),

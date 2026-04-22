@@ -10,7 +10,10 @@ import dev.skype.mic_flowyx.domain.repositories.VideoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -24,7 +27,7 @@ public class BulkUpdateTagsUseCase {
         this.userRepository = userRepository;
     }
 
-    public List<Video> execute(List<UUID> videoIds, List<String> tags, String userEmail) {
+    public List<Video> execute(List<UUID> videoIds, List<String> tagsToAdd, List<String> tagsToRemove, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UserNotFoundException(userEmail));
 
@@ -36,8 +39,15 @@ public class BulkUpdateTagsUseCase {
                 throw new VideoAccessDeniedException(id);
             }
 
+            // Apply delta: start with existing tags, add new ones, remove specified ones
+            Set<String> updatedTags = new HashSet<>(video.tags());
+            updatedTags.addAll(tagsToAdd);
+            updatedTags.removeAll(tagsToRemove);
+            List<String> sortedTags = new ArrayList<>(updatedTags);
+            sortedTags.sort(String.CASE_INSENSITIVE_ORDER);
+
             Video updated = new Video(
-                    video.id(), video.userId(), video.description(), tags,
+                    video.id(), video.userId(), video.description(), sortedTags,
                     video.videoKey(), video.thumbnailKey(), video.fileSizeBytes(),
                     video.contentType(), video.status(), video.createdAt(), OffsetDateTime.now()
             );

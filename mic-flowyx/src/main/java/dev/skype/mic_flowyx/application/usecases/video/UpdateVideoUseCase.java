@@ -10,6 +10,8 @@ import dev.skype.mic_flowyx.domain.repositories.VideoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UpdateVideoUseCase {
@@ -33,11 +35,15 @@ public class UpdateVideoUseCase {
             throw new VideoAccessDeniedException(command.videoId());
         }
 
+        List<String> tags = command.tags() != null ? command.tags() : video.tags();
+        List<String> sortedTags = new ArrayList<>(tags);
+        sortedTags.sort(String.CASE_INSENSITIVE_ORDER);
+
         Video updated = new Video(
                 video.id(),
                 video.userId(),
                 command.description() != null ? command.description() : video.description(),
-                command.tags() != null ? command.tags() : video.tags(),
+                sortedTags,
                 video.videoKey(),
                 video.thumbnailKey(),
                 video.fileSizeBytes(),

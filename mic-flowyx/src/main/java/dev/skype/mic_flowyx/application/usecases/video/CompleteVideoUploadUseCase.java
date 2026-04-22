@@ -77,11 +77,14 @@ public class CompleteVideoUploadUseCase {
                 thumbnailUploaded = true;
             }
 
+            List<String> sortedTags = tags != null ? new ArrayList<>(tags) : new ArrayList<>();
+            sortedTags.sort(String.CASE_INSENSITIVE_ORDER);
+
             Video video = new Video(
                     videoId,
                     user.id(),
                     description,
-                    tags != null ? tags : List.of(),
+                    sortedTags,
                     videoKey,
                     thumbnailKey,
                     totalSize,

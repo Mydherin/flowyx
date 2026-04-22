@@ -30,6 +30,7 @@ export function AdminUserDetailPage() {
   const activeRecipientIds = useFilterStore((s) => s.admin[userId!]?.activeRecipientIds ?? [])
   const setAdminTags       = useFilterStore((s) => s.setAdminTags)
   const setAdminRecipients = useFilterStore((s) => s.setAdminRecipientIds)
+  const pruneAdminTags     = useFilterStore((s) => s.pruneAdminTags)
   const ensureAdminEntry   = useFilterStore((s) => s.ensureAdminEntry)
 
   const setActiveTags         = useCallback((tags: string[]) => setAdminTags(userId!, tags), [setAdminTags, userId])
@@ -81,6 +82,12 @@ export function AdminUserDetailPage() {
     () => [...new Set(videos.flatMap((v) => v.tags))].sort(),
     [videos],
   )
+
+  // Keep active tag filters in sync when allTags changes.
+  // Automatically removes tags from filter if they no longer exist.
+  useEffect(() => {
+    if (userId) pruneAdminTags(userId, allTags)
+  }, [allTags, userId, pruneAdminTags])
 
   const visibleVideos = useMemo(() => {
     let result = videos

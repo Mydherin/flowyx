@@ -14,7 +14,7 @@ interface EditModalProps {
 
 export function EditModal({ video, onClose, onSuccess, existingTags }: EditModalProps) {
   const [description, setDescription] = useState(video.description)
-  const [tags, setTags] = useState<string[]>(video.tags)
+  const [tags, setTags] = useState<string[]>([...video.tags].sort())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

@@ -11,8 +11,9 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video, onPlay, onEdit, onDelete }: VideoCardProps) {
-  const visibleTags = video.tags.slice(0, MAX_VISIBLE_TAGS)
-  const hiddenTags = video.tags.slice(MAX_VISIBLE_TAGS)
+  const sortedTags = [...video.tags].sort()
+  const visibleTags = sortedTags.slice(0, MAX_VISIBLE_TAGS)
+  const hiddenTags = sortedTags.slice(MAX_VISIBLE_TAGS)
 
   return (
     // No overflow-hidden on the card so the tag tooltip can escape the bounds

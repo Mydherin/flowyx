@@ -222,7 +222,7 @@ public class VideoController {
             @RequestBody BulkUpdateTagsRequest request,
             @AuthenticationPrincipal String userEmail
     ) {
-        List<Video> updated = bulkUpdateTagsUseCase.execute(request.videoIds(), request.tags(), userEmail);
+        List<Video> updated = bulkUpdateTagsUseCase.execute(request.videoIds(), request.tagsToAdd(), request.tagsToRemove(), userEmail);
         List<VideoResponse> responses = updated.stream()
                 .map(v -> getVideoUseCase.execute(v.id(), userEmail))
                 .map(VideoResponse::fromDomain)

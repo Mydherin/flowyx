@@ -30,6 +30,11 @@ interface FilterStore {
   setMyVideosTags: (tags: string[]) => void
   setMyVideosRecipientIds: (ids: string[]) => void
   /**
+   * Removes any stored tag that is no longer valid.
+   * Returns the same state reference when nothing changed — avoids a spurious re-render.
+   */
+  pruneMyVideosTags: (validTags: string[]) => void
+  /**
    * Removes any stored recipient ID that is no longer valid.
    * Returns the same state reference when nothing changed — avoids a spurious re-render.
    */
@@ -43,6 +48,11 @@ interface FilterStore {
   setSelectedSharerId: (id: string | null) => void
   setActiveSharedTags: (tags: string[]) => void
   /**
+   * Removes any stored shared tag that is no longer valid.
+   * Returns the same state reference when nothing changed — avoids a spurious re-render.
+   */
+  pruneActiveSharedTags: (validTags: string[]) => void
+  /**
    * Auto-selects the first sharer on initial tab load.
    * No-op once `sharerInitialized` is true — safe to call on every `sharedVideos` update.
    */
@@ -51,6 +61,11 @@ interface FilterStore {
   // ─── Admin actions ─────────────────────────────────────────────────────────
   setAdminTags: (userId: string, tags: string[]) => void
   setAdminRecipientIds: (userId: string, ids: string[]) => void
+  /**
+   * Removes any stored tag that is no longer valid for a specific user.
+   * Returns the same state reference when nothing changed — avoids a spurious re-render.
+   */
+  pruneAdminTags: (userId: string, validTags: string[]) => void
   /** Seeds a stable entry for `userId` so selectors never return a new `[]` reference. */
   ensureAdminEntry: (userId: string) => void
 }
@@ -70,6 +85,15 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setMyVideosRecipientIds: (ids) =>
     set((s) => ({ myVideos: { ...s.myVideos, activeRecipientIds: ids } })),
 
+  pruneMyVideosTags: (validTags) =>
+    set((s) => {
+      const validSet = new Set(validTags)
+      const prev = s.myVideos.activeTags
+      const next = prev.filter((tag) => validSet.has(tag))
+      if (next.length === prev.length) return s // same reference — no re-render
+      return { myVideos: { ...s.myVideos, activeTags: next } }
+    }),
+
   pruneMyVideosRecipientIds: (validIds) =>
     set((s) => {
       const validSet = new Set(validIds)
@@ -84,6 +108,15 @@ export const useFilterStore = create<FilterStore>((set) => ({
 
   setActiveSharedTags: (tags) =>
     set((s) => ({ shared: { ...s.shared, activeSharedTags: tags } })),
+
+  pruneActiveSharedTags: (validTags) =>
+    set((s) => {
+      const validSet = new Set(validTags)
+      const prev = s.shared.activeSharedTags
+      const next = prev.filter((tag) => validSet.has(tag))
+      if (next.length === prev.length) return s // same reference — no re-render
+      return { shared: { ...s.shared, activeSharedTags: next } }
+    }),
 
   initializeSharer: (firstSharerId) =>
     set((s) => {
@@ -100,6 +133,17 @@ export const useFilterStore = create<FilterStore>((set) => ({
     set((s) => ({
       admin: { ...s.admin, [userId]: { ...(s.admin[userId] ?? DEFAULT_ADMIN), activeRecipientIds: ids } },
     })),
+
+  pruneAdminTags: (userId, validTags) =>
+    set((s) => {
+      const entry = s.admin[userId]
+      if (!entry) return s // user not in admin view yet
+      const validSet = new Set(validTags)
+      const prev = entry.activeTags
+      const next = prev.filter((tag) => validSet.has(tag))
+      if (next.length === prev.length) return s // same reference — no re-render
+      return { admin: { ...s.admin, [userId]: { ...entry, activeTags: next } } }
+    }),
 
   ensureAdminEntry: (userId) =>
     set((s) => {
